@@ -8,25 +8,36 @@ def create_app():
     CORS(app) # Enable CORS for all routes
 
     # Initialize Firebase Admin SDK
-    # For MVP local dev, we might assume GOOGLE_APPLICATION_CREDENTIALS is set
-    # or use a placeholder if not yet provided.
     if not firebase_admin._apps:
         try:
-            # Check for local service account key
             import os
+            import json
             from dotenv import load_dotenv
-            dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+            
+            # Load .env if present (local dev)
+            dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env') # Adjusted path to root
             load_dotenv(dotenv_path)
+
+            # 1. Check for Env Var with JSON content (Production/Render)
+            firebase_creds_json = os.getenv('FIREBASE_CREDENTIALS')
+            
+            # 2. Check for local file
             key_path = os.getenv('SVC_ACC_PATH', 'service-account.json')
             
-            if os.path.exists(key_path):
+            if firebase_creds_json:
+                print("Initializing Firebase with FIREBASE_CREDENTIALS env var")
+                cred_dict = json.loads(firebase_creds_json)
+                cred = credentials.Certificate(cred_dict)
+                firebase_admin.initialize_app(cred)
+            elif os.path.exists(key_path):
+                print(f"Initializing Firebase with local file: {key_path}")
                 cred = credentials.Certificate(key_path)
                 firebase_admin.initialize_app(cred)
-                print(f"Firebase Admin Initialized with {key_path}")
             else:
-                # Fallback to default credentials (cloud env or GOOGLE_APPLICATION_CREDENTIALS set)
+                # 3. Fallback to Google Cloud automatic discovery
+                print("Initializing Firebase with Default Credentials")
                 firebase_admin.initialize_app()
-                print("Firebase Admin Initialized with Default Credentials")
+                
         except Exception as e:
             print(f"Warning: Firebase Admin failed to initialize: {e}")
 
