@@ -755,6 +755,11 @@ h6 {
     padding: 0 1rem;
   }
 
+  /* Reset padding for main container if it causes gaps */
+  main.container {
+    padding-top: 0 !important;
+  }
+
   /* Navbar Stacking */
   .navbar-content {
     /* No longer stacking everything, keep row for logo + hamburger */
