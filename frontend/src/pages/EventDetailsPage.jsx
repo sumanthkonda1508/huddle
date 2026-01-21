@@ -112,7 +112,7 @@ export default function EventDetailsPage() {
             const item = {
                 type,
                 targetId: type === 'host' ? event.hostId : event.venue, // Using venue name as ID since we don't have venue entities
-                name: type === 'host' ? 'Event Host' : event.venue, // Placeholder name if host details missing, fetched typically
+                name: type === 'host' ? (event.hostName || 'Event Host') : event.venue, // Placeholder name if host details missing, fetched typically
                 details: {
                     eventName: event.title,
                     eventCity: event.city

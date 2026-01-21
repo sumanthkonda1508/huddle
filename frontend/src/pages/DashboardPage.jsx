@@ -7,6 +7,7 @@ export default function DashboardPage() {
     const { currentUser, userProfile } = useAuth();
     const [hosted, setHosted] = useState([]);
     const [joined, setJoined] = useState([]);
+    const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('hosted');
     const navigate = useNavigate();
@@ -14,10 +15,12 @@ export default function DashboardPage() {
     useEffect(() => {
         Promise.all([
             api.getHostedEvents(),
-            api.getJoinedEvents()
-        ]).then(([hostedRes, joinedRes]) => {
+            api.getJoinedEvents(),
+            api.getWishlist()
+        ]).then(([hostedRes, joinedRes, wishlistRes]) => {
             setHosted(hostedRes.data);
             setJoined(joinedRes.data);
+            setWishlist(wishlistRes.data);
         }).catch(err => {
             console.error(err);
         }).finally(() => {
@@ -32,6 +35,17 @@ export default function DashboardPage() {
             setHosted(prev => prev.filter(e => e.id !== id));
         } catch (err) {
             alert('Failed to delete event: ' + err.message);
+        }
+    };
+
+    const handleRemoveFromWishlist = async (itemId) => {
+        if (!window.confirm('Remove this item from your wishlist?')) return;
+        try {
+            await api.removeFromWishlist(itemId);
+            setWishlist(prev => prev.filter(item => item.id !== itemId));
+        } catch (err) {
+            alert('Failed to remove from wishlist');
+            console.error(err);
         }
     };
 
@@ -144,13 +158,81 @@ export default function DashboardPage() {
                     >
                         Attending ({joined.length})
                     </button>
+                    <button
+                        onClick={() => setActiveTab('wishlist')}
+                        className={`tab-btn ${activeTab === 'wishlist' ? 'active' : ''}`}
+                    >
+                        My Wishlist ({wishlist.length})
+                    </button>
                 </div>
 
                 {/* Content */}
-                {activeTab === 'hosted' ? (
+                {activeTab === 'hosted' && (
                     <EventList events={hosted} isHosted={true} />
-                ) : (
+                )}
+                {activeTab === 'joined' && (
                     <EventList events={joined} isHosted={false} />
+                )}
+                {activeTab === 'wishlist' && (
+                    <>
+                        {wishlist.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-color)' }}>
+                                <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Your wishlist is empty.</p>
+                                <Link to="/" className="btn" style={{ marginTop: '1rem', display: 'inline-block' }}>Explore Events</Link>
+                            </div>
+                        ) : (
+                            <div className="event-grid">
+                                {wishlist.map(item => (
+                                    <div key={item.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                            <div>
+                                                <span style={{
+                                                    display: 'inline-block',
+                                                    padding: '0.25rem 0.5rem',
+                                                    borderRadius: '4px',
+                                                    background: item.type === 'host' ? '#EEF2FF' : '#F0FDF4',
+                                                    color: item.type === 'host' ? '#4F46E5' : '#16A34A',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '600',
+                                                    marginBottom: '0.5rem'
+                                                }}>
+                                                    {item.type === 'host' ? 'FAVORITE HOST' : 'SAVED VENUE'}
+                                                </span>
+                                                <h3 style={{ fontSize: '1.1rem', margin: 0 }}>{item.name}</h3>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRemoveFromWishlist(item.id)}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#94a3b8' }}
+                                                title="Remove"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+
+                                        {item.details && (
+                                            <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                                {item.details.eventName && <div style={{ marginBottom: '0.25rem' }}>From: <strong>{item.details.eventName}</strong></div>}
+                                                {item.details.eventCity && <div>📍 {item.details.eventCity}</div>}
+                                            </div>
+                                        )}
+
+                                        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                            {item.type === 'host' ? (
+                                                // Ideally link to a host profile if available, for now just a placeholder action or nothing
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    Get notified when they host next!
+                                                </span>
+                                            ) : (
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    Saved for your future events.
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
