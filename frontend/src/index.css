@@ -771,6 +771,19 @@ h6 {
     /* No longer stacking everything, keep row for logo + hamburger */
     flex-direction: row;
     padding: 0;
+    position: relative;
+    /* Needed for absolute centering */
+    justify-content: normal;
+    /* Reset justify */
+  }
+
+  /* Center Brand on Mobile */
+  .brand-container {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto;
+    margin: 0 !important;
   }
 
   .nav-links.desktop-only {
