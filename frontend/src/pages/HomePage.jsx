@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client';
 import { Link } from 'react-router-dom';
+import SEO from '../components/SEO';
 
 export default function HomePage() {
     const [events, setEvents] = useState([]);
@@ -44,6 +45,10 @@ export default function HomePage() {
 
     return (
         <div>
+            <SEO
+                title="Home"
+                description="Discover local events and hobbies in your city. Join Huddle today!"
+            />
             {/* Hero Section */}
             <div className="hero-section">
                 <div className="hero-content">

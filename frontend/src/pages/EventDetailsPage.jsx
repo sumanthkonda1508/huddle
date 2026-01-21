@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import SEO from '../components/SEO';
 
 export default function EventDetailsPage() {
     const { id } = useParams();
@@ -167,6 +168,10 @@ export default function EventDetailsPage() {
     return (
 
         <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
+            <SEO
+                title={event.title}
+                description={`${event.title} hosted by ${event.hostName || 'a community member'} in ${event.city}. Join now!`}
+            />
             {/* Hero Header */}
             <div className="event-hero">
                 <div className="back-nav">
