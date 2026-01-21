@@ -145,7 +145,7 @@ select:focus {
 }
 
 .hamburger-btn {
-  display: none;
+  display: none !important;
 }
 
 .brand-container {
