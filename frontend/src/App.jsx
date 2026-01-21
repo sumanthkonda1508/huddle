@@ -20,6 +20,7 @@ function App() {
   const { currentUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [hasUnread, setHasUnread] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (currentUser) {
@@ -45,7 +46,16 @@ function App() {
             <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem' }}>🏠</Link>
             <Link to="/" className="brand">Huddle</Link>
           </div>
-          <nav className="nav-links">
+          <button
+            className="hamburger-btn"
+            onClick={() => setIsOpen(!isOpen)}
+            aria-label="Toggle menu"
+          >
+            ☰
+          </button>
+
+          {/* Desktop Nav */}
+          <nav className="nav-links desktop-only">
             <Link to="/">Events</Link>
             {currentUser ? (
               <>
@@ -83,6 +93,39 @@ function App() {
               <Link to="/login" className="btn">Login</Link>
             )}
           </nav>
+
+          {/* Mobile Sidebar */}
+          <div className={`mobile-sidebar ${isOpen ? 'open' : ''}`}>
+            <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <div className="brand" style={{ fontSize: '1.5rem' }}>Menu</div>
+                <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-primary)' }}>✕</button>
+              </div>
+
+              <Link to="/" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500 }}>🏠 Home</Link>
+
+              {currentUser ? (
+                <>
+                  <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500 }}>➕ Host Event</Link>
+                  <Link to="/dashboard" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500 }}>📊 Dashboard</Link>
+                  <Link to="/profile" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500 }}>👤 Profile</Link>
+                  <Link to="/notifications" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500 }}>🔔 Notifications {hasUnread && '🔴'}</Link>
+                  {isAdmin && <Link to="/admin" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--primary)' }}>🛡️ Admin</Link>}
+                  <button onClick={() => { handleLogout(); setIsOpen(false); }} className="btn" style={{ marginTop: '1rem', width: '100%' }}>Logout</button>
+                </>
+              ) : (
+                <Link to="/login" onClick={() => setIsOpen(false)} className="btn" style={{ textAlign: 'center' }}>Login</Link>
+              )}
+            </div>
+          </div>
+
+          {/* Backdrop */}
+          {isOpen && (
+            <div
+              className="sidebar-backdrop"
+              onClick={() => setIsOpen(false)}
+            ></div>
+          )}
         </div>
       </header>
 
