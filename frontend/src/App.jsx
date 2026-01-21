@@ -51,8 +51,7 @@ function App() {
             ☰
           </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto' }}>
-            <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem' }}>🏠</Link>
+          <div className="brand-container">
             <Link to="/" className="brand">Huddle</Link>
           </div>
 

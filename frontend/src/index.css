@@ -148,6 +148,12 @@ select:focus {
   display: none;
 }
 
+.brand-container {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+}
+
 .navbar-content {
   display: flex;
   align-items: center;
