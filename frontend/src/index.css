@@ -148,6 +148,11 @@ select:focus {
   display: none !important;
 }
 
+.mobile-sidebar,
+.sidebar-backdrop {
+  display: none;
+}
+
 .brand-container {
   margin-right: auto;
   display: flex;
@@ -804,6 +809,7 @@ h6 {
 
   /* Mobile Sidebar Drawer */
   .mobile-sidebar {
+    display: block;
     position: fixed;
     top: 0;
     right: 0;
@@ -823,6 +829,7 @@ h6 {
 
   /* Backdrop */
   .sidebar-backdrop {
+    display: block;
     position: fixed;
     top: 0;
     left: 0;
