@@ -42,17 +42,19 @@ function App() {
     <div className="app">
       <header className="navbar">
         <div className="container navbar-content">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem' }}>🏠</Link>
-            <Link to="/" className="brand">Huddle</Link>
-          </div>
           <button
             className="hamburger-btn"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle menu"
+            style={{ marginRight: '1rem' }}
           >
             ☰
           </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto' }}>
+            <Link to="/" style={{ textDecoration: 'none', fontSize: '1.2rem' }}>🏠</Link>
+            <Link to="/" className="brand">Huddle</Link>
+          </div>
 
           {/* Desktop Nav */}
           <nav className="nav-links desktop-only">
