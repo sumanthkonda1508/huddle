@@ -40,22 +40,81 @@ def create_event():
         'title': data['title'],
         'description': data.get('description', ''),
         'city': data['city'],
+        'address': data.get('address', ''), # Full formatted address
+        'coordinates': data.get('coordinates', None), # {lat, lng}
         'hobby': data['hobby'],
-        'venue': data['venue'],
+        'venue': data['venue'], # Name of the place
+        'price': float(data.get('price', 0)),
         'date': data['date'], # formatted string or timestamp
         'maxParticipants': int(data['maxParticipants']),
         'participants': [],
+        'attendeeCount': 0, # Total headcount including guests
+        'eventType': data.get('eventType', 'solo'), # 'solo' or 'group'
+        'maxTicketsPerUser': int(data.get('maxTicketsPerUser', 4 if data.get('eventType', 'solo') == 'solo' else 10)),
         'allowCancellation': data.get('allowCancellation', True),
+        'mediaUrls': data.get('mediaUrls', []), # List of URLs
         'createdAt': firestore.SERVER_TIMESTAMP
     }
     
     _, doc_ref = events_ref.add(event_data)
     # Add ID to the response
     event_data['id'] = doc_ref.id
-    # Serialize timestamp if needed (Flask jsonify might struggle with server_timestamp sentinel)
-    # But usually .add() returns a ref. We can just return the ID.
     
+    # Notify Wishlisters (Async/Background ideally, but inline for MVP)
+    try:
+        # ... existing notification logic ...
+        # (omitted for brevity in replacement, but should preserve if not replacing whole block)
+        # Actually I need to be careful not to delete logic.
+        # Let's replace just the event_data construction block first.
+        pass
+    except: pass # Logic handled in next chunk or separate
+
+    # Re-writing the notification logic to be safe since I consumed the lines
+    try:
+         # 1. Wishlisted Host
+        host_wishlists = db.collection_group('wishlist').where('type', '==', 'host').where('targetId', '==', uid).stream()
+        
+        # 2. Wishlisted Venue
+        venue_wishlists = db.collection_group('wishlist').where('type', '==', 'place').where('targetId', '==', data['venue']).stream()
+        
+        notified_users = set()
+        
+        def send_notif(w_doc, msg_type):
+            recipient_id = w_doc.reference.parent.parent.id
+            if recipient_id == uid: return
+            if recipient_id in notified_users: return
+            
+            user_name = g.user.get('name', 'A Host')
+            msg = ""
+            if msg_type == 'host':
+                msg = f"{user_name} hosted a new event: {data['title']}"
+            else:
+                msg = f"New event at {data['venue']}: {data['title']}"
+                
+            create_notification(
+                recipient_id=recipient_id,
+                title='Wishlist Update',
+                message=msg,
+                type='wishlist_alert',
+                related_event_id=doc_ref.id
+            )
+            notified_users.add(recipient_id)
+
+        for w in host_wishlists:
+            send_notif(w, 'host')
+            
+        for w in venue_wishlists:
+            send_notif(w, 'place')
+    except Exception as e:
+        print(f"Failed to send wishlist notifications: {e}")
+
     return jsonify({'message': 'Event created', 'eventId': doc_ref.id}), 201
+
+# ... list_events ...
+
+# ... get_event ...
+
+
 
 @events_bp.route('', methods=['GET'])
 def list_events():
@@ -110,26 +169,64 @@ def get_event(event_id):
         return jsonify({'error': 'Event not found'}), 404
     data = doc.to_dict()
     data['id'] = doc.id
+    
+    # Fetch Host Details
+    host_id = data.get('hostId')
+    if host_id:
+        host_doc = db.collection('users').document(host_id).get()
+        if host_doc.exists:
+            host_data = host_doc.to_dict()
+            data['hostName'] = host_data.get('displayName', 'Unknown Host')
+            data['hostPhoto'] = host_data.get('photoURL', None)
+            
     return jsonify(format_doc(data)), 200
 
 @firestore.transactional
-def join_transaction(transaction, event_ref, uid):
+def join_transaction(transaction, event_ref, uid, guests):
     snapshot = event_ref.get(transaction=transaction)
     if not snapshot.exists:
         return {'error': 'Event not found', 'code': 404}
     
     data = snapshot.to_dict()
     participants = data.get('participants', [])
+    attendee_count = data.get('attendeeCount', len(participants)) # Fallback for old events
     max_p = data.get('maxParticipants', 0)
+    event_type = data.get('eventType', 'solo')
+    
+    # Calculate spots needed
+    spots_needed = 1 + len(guests)
     
     if uid in participants:
-        return {'error': 'Already joined', 'code': 400}
-        
-    if len(participants) >= max_p:
-        return {'error': 'Event is full', 'code': 400}
+         return {'error': 'Already joined', 'code': 400}
+         
+    # NEW: Max Tickets Per User
+    # Default to 4 (Solo legacy) or 10 (Group logic) if missing
+    default_max = 4 if event_type == 'solo' else 10
+    max_tickets_per_user = data.get('maxTicketsPerUser', default_max)
+
+    if spots_needed > max_tickets_per_user:
+        return {'error': f'This event allows a maximum of {max_tickets_per_user} tickets per booking', 'code': 400}
     
+    # Group events: No specific booking limit, just capacity check
+
+    if attendee_count + spots_needed > max_p:
+        return {'error': 'Not enough spots available', 'code': 400}
+    
+    # Create Booking Doc in Subcollection
+    booking_ref = event_ref.collection('bookings').document(uid)
+    booking_data = {
+        'userId': uid,
+        'guestCount': len(guests),
+        'guests': guests, # List of {name, info}
+        'totalSpots': spots_needed,
+        'createdAt': firestore.SERVER_TIMESTAMP
+    }
+    transaction.set(booking_ref, booking_data)
+
+    # Update Event
     transaction.update(event_ref, {
-        'participants': firestore.ArrayUnion([uid])
+        'participants': firestore.ArrayUnion([uid]),
+        'attendeeCount': attendee_count + spots_needed
     })
     return {'message': 'Joined successfully', 'code': 200}
 
@@ -138,25 +235,30 @@ def join_transaction(transaction, event_ref, uid):
 def join_event(event_id):
     uid = g.user['uid']
     user_name = g.user.get('name', 'Someone')
+    data = request.get_json() or {}
+    guests = data.get('guests', []) # Expect list of objects or strings? Let's say list of {name: "John"}
     
+    if not isinstance(guests, list):
+        return jsonify({'error': 'Invalid guests format'}), 400
+
     event_ref = events_ref.document(event_id)
     
     transaction = db.transaction()
     try:
-        result = join_transaction(transaction, event_ref, uid)
+        result = join_transaction(transaction, event_ref, uid, guests)
         
         # Notify Host if successful
         if result.get('code') == 200:
-            # We need event data to notify host. snapshot was read in transaction but not returned fully.
-            # Ideally we refactor logic or just read again (read is cheap). 
-            # Or make transaction return data.
-            # Let's read outside transaction for notification (async/eventual consistency is fine for notifs)
             evt = event_ref.get().to_dict()
             if evt and evt.get('hostId') != uid:
+                msg = f"{user_name} joined {evt.get('title')}"
+                if guests:
+                    msg += f" with {len(guests)} guests"
+                    
                 create_notification(
                     recipient_id=evt.get('hostId'),
                     title='New Attendee',
-                    message=f"{user_name} joined {evt.get('title')}",
+                    message=msg,
                     type='event_joined',
                     related_event_id=event_id
                 )
@@ -174,14 +276,29 @@ def leave_event(event_id):
     event_ref = events_ref.document(event_id)
     
     try:
-        # Get event first for notification details
+        # Get booking first to know how many spots to free
+        booking_ref = event_ref.collection('bookings').document(uid)
+        booking_doc = booking_ref.get()
+        spots_to_free = 1 # Default if no booking doc (legacy)
+        
+        if booking_doc.exists:
+            spots_to_free = booking_doc.to_dict().get('totalSpots', 1)
+            
         evt_doc = event_ref.get()
         if evt_doc.exists:
             evt = evt_doc.to_dict()
             
+            # Atomic Decrement
+            # We can use increment(-amount) but let's be careful with 0.
+            # Ideally transaction, but straightforward update is okay for leave if not highly concurrent on same doc
+            
             event_ref.update({
-                'participants': firestore.ArrayRemove([uid])
+                'participants': firestore.ArrayRemove([uid]),
+                'attendeeCount': firestore.Increment(-spots_to_free)
             })
+            
+            # Delete booking
+            booking_ref.delete()
             
             if evt.get('hostId') != uid:
                 create_notification(
@@ -201,7 +318,25 @@ def leave_event(event_id):
 
 # ... Update Event ...
 
-# ... Delete Event ...
+@events_bp.route('/<event_id>', methods=['DELETE'])
+@login_required
+def delete_event(event_id):
+    uid = g.user['uid']
+    event_ref = events_ref.document(event_id)
+    doc = event_ref.get()
+    
+    if not doc.exists:
+        return jsonify({'error': 'Event not found'}), 404
+        
+    data = doc.to_dict()
+    if data.get('hostId') != uid:
+        return jsonify({'error': 'Unauthorized. Only the host can delete this event.'}), 403
+        
+    # Optional: Delete subcollections (comments, bookings) manually if needed.
+    # For now, just deleting the main doc.
+    event_ref.delete()
+    
+    return jsonify({'message': 'Event deleted successfully'}), 200
 
 @events_bp.route('/<event_id>/comments', methods=['GET'])
 def list_comments(event_id):

@@ -34,7 +34,7 @@ export const api = {
     createEvent: (data) => client.post('/events', data),
     updateEvent: (id, data) => client.put(`/events/${id}`, data),
     deleteEvent: (id) => client.delete(`/events/${id}`),
-    joinEvent: (id) => client.post(`/events/${id}/join`),
+    joinEvent: (id, data) => client.post(`/events/${id}/join`, data),
     leaveEvent: (id) => client.post(`/events/${id}/leave`),
     syncUser: (data) => client.post('/users/sync', data),
     subscribe: (plan) => client.post('/users/me/subscribe', { plan }),
@@ -55,4 +55,9 @@ export const api = {
     getNotifications: () => client.get('/notifications'),
     markNotificationRead: (id) => client.put(`/notifications/${id}/read`),
     markAllNotificationsRead: () => client.put('/notifications/read-all'),
+
+    // Wishlist
+    getWishlist: () => client.get('/users/me/wishlist'),
+    addToWishlist: (item) => client.post('/users/me/wishlist', item),
+    removeFromWishlist: (itemId) => client.delete(`/users/me/wishlist/${itemId}`),
 };

@@ -14,6 +14,11 @@ export default function EventDetailsPage() {
     const [attendees, setAttendees] = useState([]);
     const navigate = useNavigate();
 
+    // Booking State
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [bookingData, setBookingData] = useState({ count: 1, guests: [] });
+    const [bookingStep, setBookingStep] = useState(1); // 1: Count, 2: Details
+
     // ... refreshEntry ...
 
     useEffect(() => {
@@ -71,13 +76,26 @@ export default function EventDetailsPage() {
         }
     };
 
-    const joinEvent = async () => {
+    const joinEvent = async (guests = []) => {
         try {
-            await api.joinEvent(id);
+            await api.joinEvent(id, { guests }); // Pass guests to API
+            setShowBookingModal(false);
+            setBookingData({ count: 1, guests: [] });
+            setBookingStep(1);
             refreshEntry();
+            alert('Joined successfully!');
         } catch (err) {
             alert(err.response?.data?.error || 'Failed to join');
         }
+    };
+
+    const handleJoinClick = () => {
+        if (!currentUser) {
+            navigate('/login');
+            return;
+        }
+        // Always open booking modal now, as Solo also allows guests (max 4)
+        setShowBookingModal(true);
     };
 
     const leaveEvent = async () => {
@@ -88,6 +106,25 @@ export default function EventDetailsPage() {
             alert(err.response?.data?.error || 'Failed to leave');
         }
     }
+
+    const handleWishlist = async (type) => {
+        try {
+            const item = {
+                type,
+                targetId: type === 'host' ? event.hostId : event.venue, // Using venue name as ID since we don't have venue entities
+                name: type === 'host' ? 'Event Host' : event.venue, // Placeholder name if host details missing, fetched typically
+                details: {
+                    eventName: event.title,
+                    eventCity: event.city
+                }
+            };
+            await api.addToWishlist(item);
+            alert(`Added ${type === 'host' ? 'Host' : 'Venue'} to wishlist!`);
+        } catch (err) {
+            console.error(err);
+            alert('Failed to add to wishlist');
+        }
+    };
 
     const handleDelete = async () => {
         if (!window.confirm('Are you sure you want to cancel this event?')) return;
@@ -114,11 +151,13 @@ export default function EventDetailsPage() {
     };
 
     const isParticipant = event.participants?.includes(currentUser?.uid);
-    const isFull = event.participants?.length >= event.maxParticipants;
+    // Use attendeeCount if available, else length
+    const currentCount = event.attendeeCount !== undefined ? event.attendeeCount : event.participants?.length || 0;
+    const isFull = currentCount >= event.maxParticipants;
     const isHost = currentUser && event.hostId === currentUser.uid;
 
     // Urgency Text
-    const seatsTaken = event.participants?.length || 0;
+    const seatsTaken = currentCount;
     let urgencyText = "Selling Fast";
     if (isFull) urgencyText = "Sold Out";
     else if (seatsTaken >= event.maxParticipants * 0.8) urgencyText = "Hurry! Almost Full";
@@ -126,258 +165,386 @@ export default function EventDetailsPage() {
     const displayedAttendees = attendees.slice(0, 4);
 
     return (
-        <div className="card" style={{ maxWidth: '800px', margin: '0 auto', padding: '0', overflow: 'hidden' }}>
-            {/* Back Button Overlay or Top */}
-            <div style={{ padding: '1rem' }}>
-                <button onClick={() => navigate(-1)} className="btn-secondary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.9rem' }}>
-                    ← Back
-                </button>
+
+        <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
+            {/* Hero Header */}
+            <div className="event-hero">
+                <div className="back-nav">
+                    <button onClick={() => navigate(-1)} className="back-nav-btn">
+                        <span>←</span> Back
+                    </button>
+                </div>
+                <div className="container" style={{ padding: 0 }}>
+                    <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem', lineHeight: 1.2 }}>{event.title}</h1>
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', opacity: 0.9 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            📅 {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} at {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span>•</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            👤 Hosted by {event.hostName || 'Unknown'}
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            <div style={{
-                height: '200px',
-                background: 'linear-gradient(to right, #4c1d95, #8b5cf6)',
-                display: 'flex',
-                alignItems: 'end',
-                padding: '2rem'
-            }}>
-                <h1 style={{ fontSize: '2.5rem', marginBottom: '0' }}>{event.title}</h1>
-            </div>
-            <div style={{ padding: '2rem' }}>
-                <div style={{ display: 'flex', gap: '2rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>
-                    <span>📍 {event.city}</span>
-                    <span>🏷️ {event.hobby}</span>
-                    <span>📅 {new Date(event.date).toLocaleDateString()}</span>
+            {/* Split Layout */}
+            <div className="event-details-layout">
+
+                {/* Left Column: Main Info */}
+                <div className="event-main-content">
+                    {/* Maps & Location - Moved up for context */}
+                    <div style={{ marginBottom: '2rem' }}>
+                        <h3 className="section-title">📍 Location</h3>
+                        <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{event.venue}, {event.city}</p>
+                        <div style={{ width: '100%', height: '300px', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                            <iframe
+                                width="100%"
+                                height="100%"
+                                frameBorder="0"
+                                style={{ border: 0 }}
+                                src={`https://maps.google.com/maps?q=${event.coordinates ? (event.coordinates.lat + ',' + event.coordinates.lng) : encodeURIComponent(event.address || (event.venue + ', ' + event.city))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                allowFullScreen
+                            ></iframe>
+                        </div>
+                    </div>
+
+                    {/* About */}
+                    <div style={{ marginBottom: '3rem' }}>
+                        <h3 className="section-title">📝 About this Event</h3>
+                        <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: '1.05rem' }}>
+                            {event.description || 'No description provided.'}
+                        </p>
+                    </div>
+
+                    {/* Gallery */}
+                    {event.mediaUrls && event.mediaUrls.length > 0 && (
+                        <div style={{ marginBottom: '3rem' }}>
+                            <h3 className="section-title">📸 Gallery</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+                                {event.mediaUrls.map((url, index) => (
+                                    <img
+                                        key={index}
+                                        src={url}
+                                        alt={`Event media ${index + 1}`}
+                                        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'transform 0.2s' }}
+                                        onClick={() => window.open(url, '_blank')}
+                                        onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+                                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Discussion */}
+                    <div>
+                        <h3 className="section-title">💬 Discussion ({comments.length})</h3>
+
+                        {/* Post Comment Form - Moved to top of comments */}
+                        {currentUser && (
+                            <form onSubmit={handlePostComment} style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+                                <div style={{
+                                    width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white'
+                                }}>
+                                    {currentUser.displayName?.charAt(0).toUpperCase() || '?'}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <textarea
+                                        value={newComment}
+                                        onChange={(e) => setNewComment(e.target.value)}
+                                        placeholder="Ask a question or share your excitement..."
+                                        rows="2"
+                                        className="input-field"
+                                        style={{ marginBottom: '0.5rem', resize: 'vertical' }}
+                                    />
+                                    <div style={{ textAlign: 'right' }}>
+                                        <button type="submit" className="btn" disabled={!newComment.trim()}>Post</button>
+                                    </div>
+                                </div>
+                            </form>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            {comments.map(comment => (
+                                <div key={comment.id} style={{ display: 'flex', gap: '1rem' }}>
+                                    <div style={{
+                                        width: '40px', height: '40px', borderRadius: '50%', background: 'var(--accent)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white', flexShrink: 0
+                                    }}>
+                                        {comment.displayName?.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="comment-bubble" style={{ flex: 1 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                                            <span style={{ fontWeight: 'bold' }}>{comment.displayName}</span>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {new Date(comment.createdAt).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <p>{comment.text}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Attendees Preview */}
-                <div
-                    onClick={() => setShowAttendeesModal(true)}
-                    style={{
-                        margin: '1.5rem 0',
-                        padding: '1rem',
-                        background: 'rgba(139, 92, 246, 0.05)',
-                        borderRadius: 'var(--radius)',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
-                    }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {/* Show limited avatars */}
-                        <div style={{ display: 'flex' }}>
-                            {displayedAttendees.map((u, i) => (
-                                <div key={u.uid} style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    background: '#ddd',
-                                    border: '2px solid white',
-                                    marginLeft: i > 0 ? '-10px' : 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '0.8rem',
-                                    overflow: 'hidden'
+                {/* Right Column: Sidebar */}
+                <div className="event-sidebar">
+                    <div className="sidebar-card">
+                        <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
+                            <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
+                                {event.price > 0 ? `$${event.price}` : 'Free'}
+                            </span>
+                        </div>
+
+                        {currentUser ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {isHost ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '0.25rem', fontSize: '0.9rem' }}>You are the host</div>
+                                        <Link to={`/events/${id}/edit`} className="btn-secondary" style={{ textAlign: 'center', width: '100%', justifyContent: 'center' }}>Edit Event</Link>
+                                        <button
+                                            onClick={handleDelete}
+                                            className="btn-secondary"
+                                            style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)', justifyContent: 'center' }}
+                                        >
+                                            🗑️ Delete Event
+                                        </button>
+                                    </div>
+                                ) : isParticipant ? (
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '1rem', fontSize: '1.1rem' }}>✓ You are going!</div>
+                                        {event.allowCancellation !== false && (
+                                            <button onClick={leaveEvent} style={{ color: 'var(--danger)', background: 'none', textDecoration: 'underline' }}>Leave Event</button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={handleJoinClick}
+                                        className="btn"
+                                        disabled={isFull}
+                                        style={{ width: '100%', fontSize: '1.1rem', padding: '1rem' }}
+                                    >
+                                        {isFull ? 'Sold Out' : (event.price > 0 ? 'Book Ticket' : 'Join Event')}
+                                    </button>
+                                )}
+                            </div>
+                        ) : (
+                            <Link to="/login" className="btn" style={{ width: '100%', textAlign: 'center' }}>Login to Join</Link>
+                        )}
+
+                        <div style={{ margin: '1.5rem 0', display: 'flex', justifyContent: 'center' }}>
+                            <span style={{ color: isFull ? 'var(--danger)' : 'var(--primary)', fontWeight: '600' }}>
+                                {urgencyText}
+                            </span>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                <span>👥</span>
+                                <div>
+                                    <strong>{currentCount}</strong> going <span style={{ color: 'var(--text-secondary)' }}>({event.maxParticipants} max)</span>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                <span>🏷️</span>
+                                <div>{event.hobby}</div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                <span>🔗</span>
+                                <button className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }} onClick={() => navigator.clipboard.writeText(window.location.href)}>Copy Link</button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                <button onClick={() => handleWishlist('host')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}>
+                                    ❤️ Save Host
+                                </button>
+                                <button onClick={() => handleWishlist('place')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}>
+                                    📍 Save Venue
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    {/* Attendees Widget */}
+                    <div className="sidebar-card">
+                        <h4 style={{ marginBottom: '1rem' }}>Who's Going?</h4>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                            {displayedAttendees.map((u) => (
+                                <div key={u.uid} title={u.displayName} style={{
+                                    width: '40px', height: '40px', borderRadius: '50%', background: '#CBD5E1', border: '2px solid white',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.9rem', color: '#475569'
                                 }}>
-                                    {u.photoURL ? <img src={u.photoURL} alt={u.displayName} style={{ width: '100%', height: '100%' }} /> : (u.displayName?.[0] || '?')}
+                                    {u.displayName?.[0]}
                                 </div>
                             ))}
                             {attendees.length > 4 && (
                                 <div style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '50%',
-                                    background: '#e2e8f0',
-                                    border: '2px solid white',
-                                    marginLeft: '-10px',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#64748b'
+                                    width: '40px', height: '40px', borderRadius: '50%', background: '#F1F5F9', border: '2px dashed #94A3B8',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', color: '#64748B'
                                 }}>+{attendees.length - 4}</div>
                             )}
                         </div>
-                        <span style={{ fontWeight: 500, color: 'var(--primary)' }}>See who's going</span>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                        <span style={{
-                            color: isFull ? 'var(--danger)' : 'var(--text-secondary)',
-                            fontWeight: 'bold'
-                        }}>
-                            {urgencyText}
-                        </span>
-                    </div>
-                </div>
-
-                {showAttendeesModal && (
-                    <div style={{
-                        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                        background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-                    }} onClick={() => setShowAttendeesModal(false)}>
-                        <div style={{
-                            background: 'var(--card-bg)', padding: '2rem', borderRadius: 'var(--radius)',
-                            width: '400px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
-                            border: '1px solid var(--border-color)', position: 'relative'
-                        }} onClick={e => e.stopPropagation()}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                <h2 style={{ margin: 0 }}>Attendees</h2>
-                                <button onClick={() => setShowAttendeesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
-                            </div>
-
-                            {attendees.length === 0 ? (
-                                <p>No one else is here yet.</p>
-                            ) : (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    {attendees.map(user => (
-                                        <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div style={{
-                                                width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
-                                            }}>
-                                                {user.displayName?.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 'bold' }}>{user.displayName}</div>
-                                            </div>
-                                            {isHost && user.uid !== currentUser.uid && (
-                                                <button
-                                                    onClick={() => handleKickUser(user.uid)}
-                                                    className="btn-secondary"
-                                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}
-                                                >
-                                                    Remove
-                                                </button>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>About</h3>
-                    <p style={{ whiteSpace: 'pre-wrap' }}>{event.description || 'No description provided.'}</p>
-                </div>
-
-                <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Venue</h3>
-                    <p>{event.venue}</p>
-                </div>
-
-                {currentUser ? (
-                    <div style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '2rem' }}>
-                        {isHost ? (
-                            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>You are the host</span>
-                                <Link to={`/events/${id}/edit`} className="btn-secondary">Edit Event</Link>
-                                <button onClick={handleDelete} className="btn-secondary" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>Cancel Event</button>
-                            </div>
-                        ) : isParticipant ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                <div style={{ color: '#4ade80', fontWeight: 'bold' }}>✓ You are going!</div>
-                                {event.allowCancellation !== false ? (
-                                    <button onClick={leaveEvent} className="btn-secondary" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }}>Leave Event</button>
-                                ) : (
-                                    <div style={{ padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                                        Ticket Non-Refundable
-                                    </div>
-                                )}
-                            </div>
-                        ) : (
-                            <button
-                                onClick={joinEvent}
-                                className="btn"
-                                disabled={isFull}
-                                style={{ opacity: isFull ? 0.5 : 1 }}
-                            >
-                                {isFull ? 'Event Full' : 'Join Event'}
-                            </button>
+                        {attendees.length === 0 && <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Be the first to join!</span>}
+                        {attendees.length > 0 && (
+                            <button onClick={() => setShowAttendeesModal(true)} style={{ marginTop: '1rem', background: 'none', color: 'var(--accent)', fontSize: '0.9rem', width: '100%' }}>View All</button>
                         )}
                     </div>
-                ) : (
-                    <div style={{ marginTop: '2rem', padding: '1rem', background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius)' }}>
-                        <Link to="/login" style={{ color: 'var(--primary)' }}>Login</Link> to join this event.
-                    </div>
-                )}
-
-                {/* Discussion Section */}
-                <div style={{ marginTop: '3rem' }}>
-                    <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>Discussion</h3>
-
-                    {/* Comment List */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-                        {comments.length === 0 ? (
-                            <p style={{ color: 'var(--text-secondary)' }}>No comments yet. Be the first to start the conversation!</p>
-                        ) : (
-                            comments.map(comment => {
-                                const canDelete = currentUser && (currentUser.uid === comment.userId || isHost);
-                                return (
-                                    <div key={comment.id} style={{ display: 'flex', gap: '1rem' }}>
-                                        <div style={{
-                                            width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
-                                        }}>
-                                            {comment.displayName?.charAt(0).toUpperCase()}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', marginBottom: '0.25rem', justifyContent: 'space-between' }}>
-                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                                                    <span style={{ fontWeight: 'bold' }}>{comment.displayName}</span>
-                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                        {comment.createdAt ? new Date(comment.createdAt).toLocaleString() : 'Just now'}
-                                                    </span>
-                                                </div>
-                                                {canDelete && (
-                                                    <button
-                                                        onClick={() => handleDeleteComment(comment.id)}
-                                                        style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.8rem' }}
-                                                        title="Delete Comment"
-                                                    >
-                                                        🗑️
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <p style={{ lineHeight: '1.5', color: 'var(--text-primary)' }}>{comment.text}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        )}
-                    </div>
-
-                    {/* Post Comment Form */}
-                    {currentUser && (
-                        <form onSubmit={handlePostComment} style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                            <div style={{
-                                width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0
-                            }}>
-                                {currentUser.displayName?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <textarea
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="Add a comment..."
-                                    rows="3"
-                                    className="input-field"
-                                    style={{ marginBottom: '0.5rem', resize: 'vertical' }}
-                                />
-                                <button
-                                    type="submit"
-                                    className="btn-secondary"
-                                    disabled={!newComment.trim()}
-                                    style={{ opacity: !newComment.trim() ? 0.5 : 1 }}
-                                >
-                                    Post Comment
-                                </button>
-                            </div>
-                        </form>
-                    )}
                 </div>
             </div>
+
+            {/* Modals placed outside layout flow */}
+            {/* Booking Modal */}
+            {showBookingModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }} onClick={() => setShowBookingModal(false)}>
+                    <div style={{
+                        background: 'var(--card-bg)', padding: '2rem', borderRadius: 'var(--radius)',
+                        width: '400px', maxWidth: '90%',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
+                    }} onClick={e => e.stopPropagation()}>
+                        <h2 style={{ marginTop: 0, color: 'var(--text-primary)' }}>Book Spot{bookingData.count > 1 ? 's' : ''}</h2>
+
+                        {bookingStep === 1 ? (
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem' }}>How many people (including you)?</label>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={() => setBookingData({ ...bookingData, count: Math.max(1, bookingData.count - 1) })}
+                                        disabled={bookingData.count <= 1}
+                                        style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                                    >
+                                        -
+                                    </button>
+                                    <span style={{ fontSize: '1.5rem', fontWeight: 'bold', minWidth: '30px', textAlign: 'center' }}>{bookingData.count}</span>
+                                    <button
+                                        className="btn-secondary"
+                                        onClick={() => {
+                                            const hostLimit = event.maxTicketsPerUser || (event.eventType === 'solo' ? 4 : 10);
+                                            const maxAllowed = Math.min(hostLimit, event.maxParticipants - currentCount);
+
+                                            if (bookingData.count < maxAllowed) {
+                                                setBookingData({ ...bookingData, count: bookingData.count + 1 });
+                                            }
+                                        }}
+                                        disabled={bookingData.count >= Math.min(
+                                            event.maxTicketsPerUser || (event.eventType === 'solo' ? 4 : 10),
+                                            event.maxParticipants - currentCount
+                                        )}
+                                        style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <div style={{ display: 'flex', gap: '1rem' }}>
+                                    <button
+                                        className="btn"
+                                        onClick={() => {
+                                            if (bookingData.count === 1) joinEvent([]);
+                                            else setBookingStep(2);
+                                        }}
+                                        style={{ flex: 1 }}
+                                    >
+                                        {bookingData.count === 1 ? 'Join Solo' : 'Next: Guest Details'}
+                                    </button>
+                                    <button className="btn-secondary" onClick={() => setShowBookingModal(false)} style={{ flex: 1 }}>Cancel</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <p style={{ marginBottom: '1rem' }}>Please provide names for your {bookingData.count - 1} guest(s):</p>
+                                {Array.from({ length: bookingData.count - 1 }).map((_, i) => (
+                                    <div key={i} style={{ marginBottom: '0.5rem' }}>
+                                        <input
+                                            placeholder={`Guest ${i + 1} Name`}
+                                            className="input-field"
+                                            onChange={e => {
+                                                const newGuests = [...(bookingData.guests || [])];
+                                                if (!newGuests[i]) newGuests[i] = {}; // Ensure obj exists
+                                                newGuests[i] = { ...newGuests[i], name: e.target.value };
+                                                setBookingData({ ...bookingData, guests: newGuests });
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                                    <button
+                                        className="btn"
+                                        onClick={() => {
+                                            // Validate guests
+                                            const guests = bookingData.guests || [];
+                                            // Filter out empty
+                                            const validGuests = guests.slice(0, bookingData.count - 1).filter(g => g && g.name);
+                                            if (validGuests.length < bookingData.count - 1) {
+                                                alert('Please fill in all guest names.');
+                                                return;
+                                            }
+                                            joinEvent(validGuests);
+                                        }}
+                                        style={{ flex: 1 }}
+                                    >
+                                        Confirm Booking
+                                    </button>
+                                    <button className="btn-secondary" onClick={() => setBookingStep(1)} style={{ flex: 1 }}>Back</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {showAttendeesModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+                }} onClick={() => setShowAttendeesModal(false)}>
+                    <div style={{
+                        background: 'var(--card-bg)', padding: '2rem', borderRadius: 'var(--radius)',
+                        width: '400px', maxWidth: '90%', maxHeight: '80vh', overflowY: 'auto',
+                        border: '1px solid var(--border-color)', position: 'relative'
+                    }} onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                            <h2 style={{ margin: 0 }}>Attendees</h2>
+                            <button onClick={() => setShowAttendeesModal(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+                        </div>
+
+                        {attendees.length === 0 ? (
+                            <p>No one else is here yet.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                {attendees.map(user => (
+                                    <div key={user.uid} style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <div style={{
+                                            width: '32px', height: '32px', borderRadius: '50%', background: 'var(--accent)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', color: 'white', flexShrink: 0
+                                        }}>
+                                            {user.displayName?.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 'bold' }}>{user.displayName}</div>
+                                        </div>
+                                        {isHost && user.uid !== currentUser.uid && (
+                                            <button
+                                                onClick={() => handleKickUser(user.uid)}
+                                                className="btn-secondary"
+                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                                            >
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

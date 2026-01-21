@@ -17,7 +17,7 @@ import { signOut } from 'firebase/auth';
 import { api } from './api/client'; // Import API
 
 function App() {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [hasUnread, setHasUnread] = React.useState(false);
 
@@ -51,6 +51,7 @@ function App() {
               <>
                 <Link to="/events/new">Host Event</Link>
                 <Link to="/dashboard">Dashboard</Link>
+                {isAdmin && <Link to="/admin" style={{ color: 'red' }}>Admin</Link>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   {/* Notifications Bell */}
                   <Link to="/notifications" style={{ textDecoration: 'none', position: 'relative', fontSize: '1.2rem', marginRight: '0.5rem' }}>

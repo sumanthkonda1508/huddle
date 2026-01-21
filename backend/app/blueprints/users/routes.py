@@ -156,7 +156,12 @@ def request_verification():
 @users_bp.route('/<uid>/approve', methods=['POST'])
 @login_required
 def approve_host(uid):
-    # In real app, check if g.user is admin
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
     users_ref.document(uid).set({
         'isVerified': True,
         'verificationStatus': 'approved',
@@ -168,8 +173,12 @@ def approve_host(uid):
 @users_bp.route('/pending', methods=['GET'])
 @login_required
 def get_pending_users():
-    # Only allow admin? For MVP let anyone view pending list or check role.
-    # Assuming internal use.
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
     docs = users_ref.where('verificationStatus', '==', 'pending').stream()
     users = []
     for doc in docs:
@@ -177,3 +186,47 @@ def get_pending_users():
         d['uid'] = doc.id
         users.append(format_doc(d))
     return jsonify(users), 200
+
+@users_bp.route('/me/wishlist', methods=['GET'])
+@login_required
+def get_wishlist():
+    uid = g.user['uid']
+    docs = users_ref.document(uid).collection('wishlist').stream()
+    wishlist = []
+    for doc in docs:
+        d = doc.to_dict()
+        d['id'] = doc.id
+        wishlist.append(format_doc(d))
+    return jsonify(wishlist), 200
+
+@users_bp.route('/me/wishlist', methods=['POST'])
+@login_required
+def add_wishlist_item():
+    uid = g.user['uid']
+    data = request.get_json()
+    
+    # Expected: type ('host' or 'place'), targetId, name, etc.
+    if not data.get('targetId') or not data.get('type'):
+        return jsonify({'error': 'Missing targetId or type'}), 400
+        
+    wi = {
+        'type': data.get('type'), # 'host' or 'place'
+        'targetId': data.get('targetId'),
+        'name': data.get('name'),
+        'details': data.get('details', {}), # Any extra info
+        'createdAt': firestore.SERVER_TIMESTAMP
+    }
+    
+    # Check if exists? Or just add.
+    # To prevent duplicates, we can query or use a deterministic ID (e.g., type_targetId)
+    doc_id = f"{wi['type']}_{wi['targetId']}"
+    users_ref.document(uid).collection('wishlist').document(doc_id).set(wi)
+    
+    return jsonify({'message': 'Added to wishlist'}), 201
+
+@users_bp.route('/me/wishlist/<item_id>', methods=['DELETE'])
+@login_required
+def remove_wishlist_item(item_id):
+    uid = g.user['uid']
+    users_ref.document(uid).collection('wishlist').document(item_id).delete()
+    return jsonify({'message': 'Removed from wishlist'}), 200
