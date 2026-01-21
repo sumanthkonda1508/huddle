@@ -489,7 +489,7 @@ h6 {
 /* Event Card Improvements */
 .event-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 2rem;
   padding-bottom: 2rem;
 }
@@ -734,4 +734,138 @@ h6 {
 
 .btn-card:hover {
   text-decoration: underline;
+}
+
+/* =========================================
+   Responsive Design & Mobile Optimizations 
+   ========================================= */
+
+/* Tablet & Mobile (max-width: 768px) */
+@media (max-width: 768px) {
+  :root {
+    --header-height: auto;
+    /* Allow header to expand */
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  /* Navbar Stacking */
+  .navbar-content {
+    flex-direction: column;
+    padding: 1rem 0;
+    gap: 1rem;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    font-size: 0.9rem;
+  }
+
+  /* Typography Scaling */
+  .hero-title {
+    font-size: 2rem;
+  }
+
+  .page-title {
+    font-size: 1.75rem;
+    text-align: center;
+  }
+
+  /* Hero Section */
+  .hero-section {
+    padding: 3rem 1rem;
+    border-radius: 0;
+    /* Full width on mobile looks better usually, or keep small radius */
+    margin: 0 -1rem 2rem -1rem;
+    /* Negative margin to go full width relative to container */
+    border-radius: 0;
+  }
+
+  /* Search Bar Stacking */
+  .search-container {
+    flex-direction: column;
+    padding: 1rem;
+    border-radius: var(--radius);
+    gap: 1rem;
+  }
+
+  .search-input-group {
+    width: 100%;
+  }
+
+  .search-divider {
+    display: none;
+    /* Hide vertical dividers in list mode */
+  }
+
+  .search-btn {
+    width: 100%;
+    /* Full width button */
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  /* Event Grid */
+  .event-grid {
+    grid-template-columns: 1fr;
+    /* Force single column on smaller tablets/large phones */
+    gap: 1.5rem;
+  }
+
+  /* Details Page */
+  .event-details-layout {
+    grid-template-columns: 1fr;
+    top: 0;
+    /* Remove overlap on mobile */
+    margin-top: -1rem;
+    padding: 0 1rem;
+  }
+
+  .event-hero {
+    padding-bottom: 3rem;
+  }
+
+  /* Forms */
+  .create-event-container {
+    padding: 0;
+    margin-top: 1rem;
+  }
+
+  .form-section {
+    padding: 1.5rem;
+  }
+}
+
+/* Small Mobile (max-width: 480px) */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 1.75rem;
+  }
+
+  .brand {
+    font-size: 1.25rem;
+  }
+
+  .nav-links {
+    gap: 0.75rem;
+  }
+
+  .dashboard-header {
+    text-align: center;
+  }
+
+  .dashboard-header .container>div {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .dashboard-tabs {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 0.5rem;
+  }
 }
