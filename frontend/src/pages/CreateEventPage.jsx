@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useNavigate, useParams } from 'react-router-dom';
+import { compressImage } from '../utils/imageUtils';
+import { useDialog } from '../context/DialogContext';
 
 export default function CreateEventPage() {
+    const { showDialog } = useDialog();
     const [formData, setFormData] = useState({
         title: '', description: '', city: '', hobby: '', venue: '', address: '', coordinates: null, price: 0,
         date: '', maxParticipants: 10, eventType: 'solo', maxTicketsPerUser: 4
@@ -76,8 +79,12 @@ export default function CreateEventPage() {
                 if (res.data.isVerified) {
                     setVerifying(false);
                 } else if (res.data.verificationStatus === 'pending') {
-                    alert('Your host verification is pending approval.');
-                    navigate('/');
+                    showDialog({
+                        title: 'Verification Pending',
+                        message: 'Your host verification is pending approval.',
+                        type: 'alert',
+                        onConfirm: () => navigate('/')
+                    });
                 } else {
                     navigate('/plans');
                 }
@@ -119,59 +126,75 @@ export default function CreateEventPage() {
         }
     }, [id, isEditing, navigate]);
 
+    const handleImageChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (formData.mediaUrls && formData.mediaUrls.length >= 5) {
+            showDialog({
+                title: 'Limit Reached',
+                message: 'Maximum 5 images allowed per event.',
+                type: 'alert'
+            });
+            return;
+        }
+
+        try {
+            // Compress and convert to Base64
+            // Using slightly lower settings to ensure multiple images fit in document
+            const base64 = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.6 });
+
+            setFormData(prev => ({
+                ...prev,
+                mediaUrls: [...(prev.mediaUrls || []), base64]
+            }));
+            // Clear input so same file can be selected again if needed (though rare)
+            e.target.value = null;
+        } catch (err) {
+            console.error("Image processing failed", err);
+            showDialog({
+                title: 'Upload Failed',
+                message: 'Failed to process image. Please try another file.',
+                type: 'error'
+            });
+        }
+    };
+
+    const handleRemoveImage = (indexToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            mediaUrls: prev.mediaUrls.filter((_, index) => index !== indexToRemove)
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setUploading(true);
-        console.log("Starting upload process...");
+        console.log("Saving event data...");
+
         try {
-            let uploadedUrls = formData.mediaUrls || [];
-
-            // Upload Logic DISABLED
-            /*
-            if (mediaFiles.length > 0) {
-                console.log(`Uploading ${mediaFiles.length} files...`);
-                // Import storage functions (ensure these are imported at top or here if lazy)
-                // Switched to dynamic import of SDK functions only, assuming 'storage' instance is available or imported.
-                // Actually, let's use the static import from firebase.js if possible, but we need to import it at top.
-                // For now, let's stick to cleaning this up.
-                const { storage } = await import('../firebase');
-                const { ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
-
-                const uploadPromises = mediaFiles.map(async (file) => {
-                    try {
-                        console.log(`Uploading file: ${file.name}`);
-                        const uniquePath = `events/${Date.now()}_${Math.random().toString(36).substr(2, 9)}/${file.name}`;
-                        const storageRef = ref(storage, uniquePath);
-                        await uploadBytes(storageRef, file);
-                        console.log(`File uploaded: ${file.name}, getting URL...`);
-                        const url = await getDownloadURL(storageRef);
-                        console.log(`Got URL for ${file.name}: ${url}`);
-                        return url;
-                    } catch (uploadErr) {
-                        console.error(`Error uploading ${file.name}:`, uploadErr);
-                        throw uploadErr;
-                    }
-                });
-
-                const newUrls = await Promise.all(uploadPromises);
-                uploadedUrls = [...uploadedUrls, ...newUrls];
-            }
-            */
-
-            console.log("Saving event data...");
-            const finalData = { ...formData, mediaUrls: uploadedUrls };
+            // Data already contains base64 mediaUrls if set by handleImageChange
+            // No separate upload step needed!
 
             if (isEditing) {
-                await api.updateEvent(id, finalData);
-                alert('Event updated successfully!');
-                navigate(`/events/${id}`);
+                await api.updateEvent(id, formData);
+                showDialog({
+                    title: 'Success',
+                    message: 'Event updated successfully!',
+                    type: 'success',
+                    onConfirm: () => navigate(`/events/${id}`)
+                });
             } else {
-                await api.createEvent(finalData);
+                await api.createEvent(formData);
                 navigate('/');
             }
         } catch (error) {
             console.error("Submit Error:", error);
-            alert('Failed to save event. ' + error.message);
+            showDialog({
+                title: 'Error',
+                message: 'Failed to save event. ' + error.message,
+                type: 'error'
+            });
         } finally {
             setUploading(false);
         }
@@ -275,7 +298,11 @@ export default function CreateEventPage() {
                                 // Uncontrolled input to allow Google Places to manage it without React lag
                                 defaultValue={formData.venue}
                                 placeholder="Start typing a location..."
-                                onChange={handleChange}
+                                onBlur={(e) => {
+                                    // Capture manual input when user leaves field
+                                    const val = e.target.value;
+                                    setFormData(prev => ({ ...prev, venue: val }));
+                                }}
                                 required
                                 className="input-field"
                             />
@@ -319,6 +346,51 @@ export default function CreateEventPage() {
                                 />
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div className="form-section">
+                    <h2 className="section-title">🖼️ Event Images</h2>
+                    <div className="form-group">
+                        <label className="form-label">Upload Photos (Max 5)</label>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="input-field"
+                            style={{ padding: '0.5rem' }}
+                            disabled={formData.mediaUrls && formData.mediaUrls.length >= 5}
+                            title={formData.mediaUrls && formData.mediaUrls.length >= 5 ? "Max 5 images reached" : "Upload image"}
+                        />
+                        {formData.mediaUrls && formData.mediaUrls.length > 0 && (
+                            <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                {formData.mediaUrls.map((url, index) => (
+                                    <div key={index} style={{ position: 'relative', height: '150px' }}>
+                                        <img
+                                            src={url}
+                                            alt={`Preview ${index}`}
+                                            style={{ height: '100%', width: 'auto', borderRadius: '8px', border: '1px solid #ddd' }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveImage(index)}
+                                            style={{
+                                                position: 'absolute', top: '-8px', right: '-8px',
+                                                background: 'var(--danger)', color: 'white', border: '2px solid white', borderRadius: '50%',
+                                                width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '14px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                            }}
+                                            title="Remove image"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            {formData.mediaUrls ? formData.mediaUrls.length : 0}/5 images uploaded.
+                        </p>
                     </div>
                 </div>
 

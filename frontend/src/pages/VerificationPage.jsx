@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { compressImage } from '../utils/imageUtils';
+import { useDialog } from '../context/DialogContext';
 
 export default function VerificationPage() {
     const [file, setFile] = useState(null);
     const [uploading, setUploading] = useState(false);
     const navigate = useNavigate();
+    const { showDialog } = useDialog();
 
     const handleFileChange = (e) => {
         setFile(e.target.files[0]);
@@ -17,20 +20,25 @@ export default function VerificationPage() {
 
         setUploading(true);
         try {
-            // SIMULATED UPLOAD: In real app, upload to Firebase Storage -> get URL.
-            // Here we just fake a URL.
-            const fakeUrl = `https://fake-storage.com/${file.name}`;
+            // Compress and convert to Base64
+            // Higher quality for documents might be needed, but still keep under 1MB
+            const base64 = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.6 });
 
-            // Artificial delay
-            await new Promise(r => setTimeout(r, 1500));
+            await api.requestVerification(base64);
 
-            await api.requestVerification(fakeUrl);
-
-            alert('Verification submitted! An admin will review your request.');
-            navigate('/plans'); // Or dashboard
+            showDialog({
+                title: 'Verification Submitted',
+                message: 'Verification submitted! An admin will review your request.',
+                type: 'success',
+                onConfirm: () => navigate('/plans')
+            });
         } catch (err) {
             console.error(err);
-            alert('Failed to submit verification.');
+            showDialog({
+                title: 'Error',
+                message: 'Failed to submit verification.',
+                type: 'error'
+            });
         } finally {
             setUploading(false);
         }

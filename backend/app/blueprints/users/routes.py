@@ -1,5 +1,6 @@
 from flask import request, jsonify, g
 from firebase_admin import firestore
+from google.cloud.firestore import FieldFilter
 from app.middleware import login_required
 from app.utils import format_doc
 from . import users_bp
@@ -79,7 +80,7 @@ def get_hosted_events():
     uid = g.user['uid']
     # Query events where hostId == uid
     events_ref = db.collection('events')
-    docs = events_ref.where('hostId', '==', uid).stream()
+    docs = events_ref.where(filter=FieldFilter('hostId', '==', uid)).stream()
     
     events = []
     for doc in docs:
@@ -94,7 +95,7 @@ def get_joined_events():
     uid = g.user['uid']
     # Query events where participants array contains uid
     events_ref = db.collection('events')
-    docs = events_ref.where('participants', 'array_contains', uid).stream()
+    docs = events_ref.where(filter=FieldFilter('participants', 'array_contains', uid)).stream()
     
     events = []
     for doc in docs:
@@ -179,7 +180,7 @@ def get_pending_users():
     if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
         return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
-    docs = users_ref.where('verificationStatus', '==', 'pending').stream()
+    docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'pending')).stream()
     users = []
     for doc in docs:
         d = doc.to_dict()

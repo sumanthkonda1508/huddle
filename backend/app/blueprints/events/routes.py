@@ -1,5 +1,6 @@
 from flask import request, jsonify, g
 from firebase_admin import firestore
+from google.cloud.firestore import FieldFilter
 from app.middleware import login_required
 from app.utils import format_doc
 from . import events_bp
@@ -72,10 +73,10 @@ def create_event():
     # Re-writing the notification logic to be safe since I consumed the lines
     try:
          # 1. Wishlisted Host
-        host_wishlists = db.collection_group('wishlist').where('type', '==', 'host').where('targetId', '==', uid).stream()
+        host_wishlists = db.collection_group('wishlist').where(filter=FieldFilter('type', '==', 'host')).where(filter=FieldFilter('targetId', '==', uid)).stream()
         
         # 2. Wishlisted Venue
-        venue_wishlists = db.collection_group('wishlist').where('type', '==', 'place').where('targetId', '==', data['venue']).stream()
+        venue_wishlists = db.collection_group('wishlist').where(filter=FieldFilter('type', '==', 'place')).where(filter=FieldFilter('targetId', '==', data['venue'])).stream()
         
         notified_users = set()
         
@@ -316,7 +317,43 @@ def leave_event(event_id):
     except Exception as e:
         return jsonify({'error': f'Failed to leave: {str(e)}'}), 500
 
-# ... Update Event ...
+@events_bp.route('/<event_id>', methods=['PUT'])
+@login_required
+def update_event(event_id):
+    uid = g.user['uid']
+    event_ref = events_ref.document(event_id)
+    doc = event_ref.get()
+    
+    if not doc.exists:
+        return jsonify({'error': 'Event not found'}), 404
+        
+    data = doc.to_dict()
+    if data.get('hostId') != uid:
+        return jsonify({'error': 'Unauthorized. Only the host can edit this event.'}), 403
+        
+    update_data = request.get_json()
+    
+    # Fields allowed to be updated
+    allowed_fields = [
+        'title', 'description', 'city', 'address', 'coordinates', 
+        'hobby', 'venue', 'price', 'date', 'maxParticipants', 
+        'eventType', 'maxTicketsPerUser', 'allowCancellation', 'mediaUrls'
+    ]
+    
+    # Filter only allowed fields
+    sanitized_data = {k: v for k, v in update_data.items() if k in allowed_fields}
+    sanitized_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+    
+    # Optional: Logic to handle maxParticipants reduction vs current attendees
+    current_attendees = data.get('attendeeCount', 0)
+    if 'maxParticipants' in sanitized_data:
+        new_max = int(sanitized_data['maxParticipants'])
+        if new_max < current_attendees:
+            return jsonify({'error': f'Cannot reduce max participants below current attendee count ({current_attendees})'}), 400
+            
+    event_ref.update(sanitized_data)
+    
+    return jsonify({'message': 'Event updated successfully'}), 200
 
 @events_bp.route('/<event_id>', methods=['DELETE'])
 @login_required

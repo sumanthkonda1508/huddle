@@ -4,6 +4,7 @@ import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 
 export default function LoginPage() {
     const [isSignup, setIsSignup] = useState(false);
@@ -12,6 +13,7 @@ export default function LoginPage() {
     const [displayName, setDisplayName] = useState('');
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { showDialog } = useDialog();
 
     useEffect(() => {
         // Only redirect if verified (or we allow unverified access to some parts but not others? User said "all users needs to be done")
@@ -38,7 +40,11 @@ export default function LoginPage() {
             navigate('/');
         } catch (error) {
             console.error("Google Login Error:", error);
-            alert("Failed to sign in with Google: " + error.message);
+            showDialog({
+                title: 'Login Failed',
+                message: "Failed to sign in with Google: " + error.message,
+                type: 'error'
+            });
         }
     };
 
@@ -52,7 +58,11 @@ export default function LoginPage() {
 
                 // Send Verification Email
                 await sendEmailVerification(userCredential.user);
-                alert("Account created! A verification link has been sent to your email. Please verify before logging in.");
+                showDialog({
+                    title: 'Account Created',
+                    message: "Account created! A verification link has been sent to your email. Please verify before logging in.",
+                    type: 'success'
+                });
 
                 // Sign out immediately so they can't access app until verified
                 await signOut(auth);
@@ -64,7 +74,11 @@ export default function LoginPage() {
 
                 if (!userCredential.user.emailVerified) {
                     await signOut(auth);
-                    alert("Please verify your email address to login. Check your inbox.");
+                    showDialog({
+                        title: 'Verification Required',
+                        message: "Please verify your email address to login. Check your inbox.",
+                        type: 'alert'
+                    });
                     return;
                 }
 
@@ -79,7 +93,11 @@ export default function LoginPage() {
             } else if (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
                 msg = 'Invalid email or password.';
             }
-            alert(msg);
+            showDialog({
+                title: 'Authentication Error',
+                message: msg,
+                type: 'error'
+            });
         }
     };
 

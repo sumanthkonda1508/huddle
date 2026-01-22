@@ -1,12 +1,22 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { compressImage } from '../utils/imageUtils';
+import { useDialog } from '../context/DialogContext';
 
 export default function ProfilePage() {
     const { currentUser } = useAuth();
     const navigate = useNavigate();
+    const { showDialog } = useDialog();
     const [profile, setProfile] = useState({
+        displayName: '',
+        bio: '',
+        city: '',
+        hobbies: [],
+        avatarUrl: ''
+    });
+    const [initialProfile, setInitialProfile] = useState({
         displayName: '',
         bio: '',
         city: '',
@@ -26,6 +36,7 @@ export default function ProfilePage() {
         try {
             const res = await api.getProfile();
             setProfile(prev => ({ ...prev, ...res.data }));
+            setInitialProfile(prev => ({ ...prev, ...res.data })); // Set initial state
         } catch (err) {
             console.error(err);
         } finally {
@@ -38,6 +49,17 @@ export default function ProfilePage() {
         setProfile(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleRemoveAvatar = () => {
+        showDialog({
+            title: 'Remove Avatar',
+            message: 'Are you sure you want to remove your profile picture?',
+            type: 'confirm',
+            onConfirm: () => {
+                setProfile(prev => ({ ...prev, avatarUrl: '' }));
+            }
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSaving(true);
@@ -45,6 +67,7 @@ export default function ProfilePage() {
         try {
             await api.updateProfile(profile);
             setMessage('Profile updated successfully!');
+            setInitialProfile(profile); // Update initial state on save
             setIsEditing(false);
         } catch (err) {
             console.error(err);
@@ -53,6 +76,39 @@ export default function ProfilePage() {
             setSaving(false);
         }
     };
+
+    // Check if dirty
+    const isDirty = initialProfile && JSON.stringify(profile) !== JSON.stringify(initialProfile);
+
+    // Browser close warning
+    useBeforeUnload(
+        useCallback(
+            (e) => {
+                if (isDirty) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            },
+            [isDirty]
+        )
+    );
+
+    // In-app navigation blocking
+    const blocker = useBlocker(
+        ({ currentLocation, nextLocation }) => isDirty && currentLocation.pathname !== nextLocation.pathname
+    );
+
+    useEffect(() => {
+        if (blocker.state === "blocked") {
+            showDialog({
+                title: "Unsaved Changes",
+                message: "You have unsaved changes. Are you sure you want to leave?",
+                type: "confirm",
+                onConfirm: () => blocker.proceed(),
+                onCancel: () => blocker.reset()
+            });
+        }
+    }, [blocker, showDialog]);
 
     if (loading) return <div className="loading">Loading Profile...</div>;
 
@@ -142,15 +198,61 @@ export default function ProfilePage() {
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Avatar URL</label>
-                                <input
-                                    type="text"
-                                    name="avatarUrl"
-                                    value={profile.avatarUrl || ''}
-                                    onChange={handleChange}
-                                    className="input-field"
-                                    placeholder="https://example.com/me.png"
-                                />
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Avatar</label>
+                                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                                    {/* Preview current/selected avatar */}
+                                    <div style={{
+                                        width: '80px', height: '80px', borderRadius: '50%',
+                                        backgroundColor: '#f1f5f9',
+                                        backgroundImage: profile.avatarUrl ? `url(${profile.avatarUrl})` : 'none',
+                                        backgroundSize: 'cover', backgroundPosition: 'center',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: '2rem', border: '2px solid var(--border-color)',
+                                        overflow: 'hidden', flexShrink: 0
+                                    }}>
+                                        {!profile.avatarUrl && '👤'}
+                                    </div>
+
+                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
+                                                {profile.avatarUrl ? 'Replace Photo' : 'Upload Photo'}
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            try {
+                                                                const base64 = await compressImage(file, { maxWidth: 300, maxHeight: 300 });
+                                                                setProfile(prev => ({ ...prev, avatarUrl: base64 }));
+                                                            } catch (err) {
+                                                                showDialog({ title: 'Error', message: 'Failed to process image', type: 'error' });
+                                                            }
+                                                        }
+                                                        // Reset input
+                                                        e.target.value = null;
+                                                    }}
+                                                    style={{ display: 'none' }}
+                                                />
+                                            </label>
+
+                                            {profile.avatarUrl && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleRemoveAvatar}
+                                                    className="btn-secondary"
+                                                    style={{ color: 'var(--danger)', borderColor: 'var(--danger)', fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}
+                                                >
+                                                    Remove
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            JPG or PNG. Max 1MB.
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>

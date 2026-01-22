@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useDialog } from '../context/DialogContext';
 
 export default function AdminPage() {
     const [pendingUsers, setPendingUsers] = useState([]);
     const navigate = useNavigate();
+    const { showDialog } = useDialog();
 
     useEffect(() => {
         api.getPendingUsers()
@@ -15,11 +17,19 @@ export default function AdminPage() {
     const handleApprove = async (uid) => {
         try {
             await api.approveHost(uid);
-            alert('User approved!');
+            showDialog({
+                title: 'Success',
+                message: 'User approved!',
+                type: 'success'
+            });
             setPendingUsers(prev => prev.filter(u => u.uid !== uid));
         } catch (err) {
             console.error(err);
-            alert('Failed to approve');
+            showDialog({
+                title: 'Error',
+                message: 'Failed to approve',
+                type: 'error'
+            });
         }
     }
 

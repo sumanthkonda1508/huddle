@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 import SEO from '../components/SEO';
 
 export default function EventDetailsPage() {
@@ -11,16 +12,17 @@ export default function EventDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
-    const [showAttendeesModal, setShowAttendeesModal] = useState(false);
-    const [attendees, setAttendees] = useState([]);
-    const navigate = useNavigate();
-
-    // Booking State
-    const [showBookingModal, setShowBookingModal] = useState(false);
     const [bookingData, setBookingData] = useState({ count: 1, guests: [] });
     const [bookingStep, setBookingStep] = useState(1); // 1: Count, 2: Details
+    const navigate = useNavigate();
+    const { showDialog } = useDialog();
+    const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [attendees, setAttendees] = useState([]);
 
-    // ... refreshEntry ...
+    // Booking information was duplicated, cleaning up
+
+    // ... refreshEntry ... 
 
     useEffect(() => {
         if (showAttendeesModal) {
@@ -31,16 +33,21 @@ export default function EventDetailsPage() {
     }, [showAttendeesModal, id]);
 
     const handleKickUser = async (userId) => {
-        if (!window.confirm('Remove this user from the event?')) return;
-        try {
-            await api.removeParticipant(id, userId);
-            setAttendees(attendees.filter(u => u.uid !== userId));
-            // Update main event count
-            refreshEntry();
-        } catch (err) {
-            console.error(err);
-            alert('Failed to remove user');
-        }
+        showDialog({
+            title: 'Remove User',
+            message: 'Are you sure you want to remove this user from the event?',
+            type: 'confirm',
+            onConfirm: async () => {
+                try {
+                    await api.removeParticipant(id, userId);
+                    setAttendees(prev => prev.filter(u => u.uid !== userId));
+                    refreshEntry();
+                } catch (err) {
+                    console.error(err);
+                    showDialog({ title: 'Error', message: 'Failed to remove user', type: 'error' });
+                }
+            }
+        });
     };
 
     const refreshEntry = () => {
@@ -73,7 +80,7 @@ export default function EventDetailsPage() {
             refreshEntry();
         } catch (error) {
             console.error(error);
-            alert('Failed to post comment');
+            showDialog({ title: 'Error', message: 'Failed to post comment', type: 'error' });
         }
     };
 
@@ -84,9 +91,9 @@ export default function EventDetailsPage() {
             setBookingData({ count: 1, guests: [] });
             setBookingStep(1);
             refreshEntry();
-            alert('Joined successfully!');
+            showDialog({ title: 'Success', message: 'Joined successfully!', type: 'success' });
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to join');
+            showDialog({ title: 'Error', message: err.response?.data?.error || 'Failed to join', type: 'error' });
         }
     };
 
@@ -104,7 +111,7 @@ export default function EventDetailsPage() {
             await api.leaveEvent(id);
             refreshEntry();
         } catch (err) {
-            alert(err.response?.data?.error || 'Failed to leave');
+            showDialog({ title: 'Error', message: err.response?.data?.error || 'Failed to leave', type: 'error' });
         }
     }
 
@@ -120,35 +127,47 @@ export default function EventDetailsPage() {
                 }
             };
             await api.addToWishlist(item);
-            alert(`Added ${type === 'host' ? 'Host' : 'Venue'} to wishlist!`);
+            showDialog({ title: 'Success', message: `Added ${type === 'host' ? 'Host' : 'Venue'} to wishlist!`, type: 'success' });
         } catch (err) {
             console.error(err);
-            alert('Failed to add to wishlist');
+            showDialog({ title: 'Error', message: 'Failed to add to wishlist', type: 'error' });
         }
     };
 
     const handleDelete = async () => {
-        if (!window.confirm('Are you sure you want to cancel this event?')) return;
-        try {
-            await api.deleteEvent(id);
-            navigate('/');
-        } catch (err) {
-            alert('Failed to delete event');
-        }
+        showDialog({
+            title: 'Cancel Event',
+            message: 'Are you sure you want to cancel this event? This action cannot be undone.',
+            type: 'confirm',
+            onConfirm: async () => {
+                try {
+                    await api.deleteEvent(id);
+                    navigate('/');
+                } catch (err) {
+                    showDialog({ title: 'Error', message: 'Failed to delete event', type: 'error' });
+                }
+            }
+        });
     };
 
     if (loading) return <div>Loading...</div>;
     if (!event) return <div>Event not found</div>;
 
     const handleDeleteComment = async (commentId) => {
-        if (!window.confirm('Delete this comment?')) return;
-        try {
-            await api.deleteComment(id, commentId);
-            refreshEntry();
-        } catch (error) {
-            console.error(error);
-            alert('Failed to delete comment');
-        }
+        showDialog({
+            title: 'Delete Comment',
+            message: 'Are you sure you want to delete this comment?',
+            type: 'confirm',
+            onConfirm: async () => {
+                try {
+                    await api.deleteComment(id, commentId);
+                    refreshEntry();
+                } catch (error) {
+                    console.error(error);
+                    showDialog({ title: 'Error', message: 'Failed to delete comment', type: 'error' });
+                }
+            }
+        });
     };
 
     const isParticipant = event.participants?.includes(currentUser?.uid);
@@ -210,6 +229,7 @@ export default function EventDetailsPage() {
                                 style={{ border: 0 }}
                                 src={`https://maps.google.com/maps?q=${event.coordinates ? (event.coordinates.lat + ',' + event.coordinates.lng) : encodeURIComponent(event.address || (event.venue + ', ' + event.city))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                                 allowFullScreen
+                                loading="lazy"
                             ></iframe>
                         </div>
                     </div>
@@ -226,18 +246,29 @@ export default function EventDetailsPage() {
                     {event.mediaUrls && event.mediaUrls.length > 0 && (
                         <div style={{ marginBottom: '3rem' }}>
                             <h3 className="section-title">📸 Gallery</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                                {event.mediaUrls.map((url, index) => (
+                            <div style={{ display: 'grid', gap: '1rem' }}>
+                                {event.mediaUrls.length === 1 ? (
                                     <img
-                                        key={index}
-                                        src={url}
-                                        alt={`Event media ${index + 1}`}
-                                        style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: 'var(--radius)', cursor: 'pointer', transition: 'transform 0.2s' }}
-                                        onClick={() => window.open(url, '_blank')}
-                                        onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-                                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                        src={event.mediaUrls[0]}
+                                        alt="Event media"
+                                        style={{ width: '100%', height: 'auto', maxHeight: '500px', objectFit: 'contain', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)' }}
+                                        onClick={() => window.open(event.mediaUrls[0], '_blank')}
                                     />
-                                ))}
+                                ) : (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                        {event.mediaUrls.map((url, index) => (
+                                            <img
+                                                key={index}
+                                                src={url}
+                                                alt={`Event media ${index + 1}`}
+                                                style={{ height: '200px', width: 'auto', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', cursor: 'pointer', transition: 'transform 0.2s' }}
+                                                onClick={() => window.open(url, '_blank')}
+                                                onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+                                                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
@@ -487,7 +518,7 @@ export default function EventDetailsPage() {
                                             // Filter out empty
                                             const validGuests = guests.slice(0, bookingData.count - 1).filter(g => g && g.name);
                                             if (validGuests.length < bookingData.count - 1) {
-                                                alert('Please fill in all guest names.');
+                                                showDialog({ title: 'Incomplete', message: 'Please fill in all guest names.', type: 'alert' });
                                                 return;
                                             }
                                             joinEvent(validGuests);

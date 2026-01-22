@@ -1,5 +1,6 @@
 from flask import request, jsonify, g
 from firebase_admin import firestore
+from google.cloud.firestore import FieldFilter
 from app.middleware import login_required
 from app.utils import format_doc
 from . import notifications_bp
@@ -38,7 +39,7 @@ def get_notifications():
     # Query without order_by to avoid requiring a composite index immediately.
     # We will sort in memory since we are limiting to 50 anyway.
     query = db.collection('notifications')\
-            .where('recipientId', '==', uid)\
+            .where(filter=FieldFilter('recipientId', '==', uid))\
             .limit(50)
             
     docs = query.stream()
@@ -80,8 +81,8 @@ def mark_all_read():
     # Batch update?
     batch = db.batch()
     docs = db.collection('notifications')\
-            .where('recipientId', '==', uid)\
-            .where('read', '==', False)\
+            .where(filter=FieldFilter('recipientId', '==', uid))\
+            .where(filter=FieldFilter('read', '==', False))\
             .stream()
             
     count = 0

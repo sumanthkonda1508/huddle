@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useDialog } from '../context/DialogContext';
 
 export default function DashboardPage() {
     const { currentUser, userProfile } = useAuth();
@@ -11,6 +12,7 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('hosted');
     const navigate = useNavigate();
+    const { showDialog } = useDialog();
 
     useEffect(() => {
         Promise.all([
@@ -29,24 +31,37 @@ export default function DashboardPage() {
     }, []);
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) return;
-        try {
-            await api.deleteEvent(id);
-            setHosted(prev => prev.filter(e => e.id !== id));
-        } catch (err) {
-            alert('Failed to delete event: ' + err.message);
-        }
+        showDialog({
+            title: 'Delete Event',
+            message: 'Are you sure you want to delete this event? This action cannot be undone.',
+            type: 'confirm',
+            onConfirm: async () => {
+                try {
+                    await api.deleteEvent(id);
+                    setHosted(prev => prev.filter(e => e.id !== id));
+                    showDialog({ title: 'Success', message: 'Event deleted successfully', type: 'success' });
+                } catch (err) {
+                    showDialog({ title: 'Error', message: 'Failed to delete event: ' + err.message, type: 'error' });
+                }
+            }
+        });
     };
 
     const handleRemoveFromWishlist = async (itemId) => {
-        if (!window.confirm('Remove this item from your wishlist?')) return;
-        try {
-            await api.removeFromWishlist(itemId);
-            setWishlist(prev => prev.filter(item => item.id !== itemId));
-        } catch (err) {
-            alert('Failed to remove from wishlist');
-            console.error(err);
-        }
+        showDialog({
+            title: 'Remove from Wishlist',
+            message: 'Remove this item from your wishlist?',
+            type: 'confirm',
+            onConfirm: async () => {
+                try {
+                    await api.removeFromWishlist(itemId);
+                    setWishlist(prev => prev.filter(item => item.id !== itemId));
+                } catch (err) {
+                    showDialog({ title: 'Error', message: 'Failed to remove from wishlist', type: 'error' });
+                    console.error(err);
+                }
+            }
+        });
     };
 
     if (loading) return (
