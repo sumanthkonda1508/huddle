@@ -5,7 +5,7 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { api } from '../api/client';
 import { DialogProvider } from '../context/DialogContext';
-import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X } from 'lucide-react';
+import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin } from 'lucide-react';
 
 export default function Layout() {
     const { currentUser, isAdmin } = useAuth();
@@ -50,9 +50,11 @@ export default function Layout() {
                         {/* Desktop Nav */}
                         <nav className="nav-links desktop-only">
                             <Link to="/">Events</Link>
+                            <Link to="/venues">Venues</Link>
                             {currentUser ? (
                                 <>
                                     <Link to="/events/new">Host Event</Link>
+                                    <Link to="/venues/new">List Venue</Link>
                                     <Link to="/dashboard">Dashboard</Link>
                                     {isAdmin && <Link to="/admin" style={{ color: 'red' }}>Admin</Link>}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -96,10 +98,12 @@ export default function Layout() {
                                 </div>
 
                                 <Link to="/" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Home size={20} /> Home</Link>
+                                <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>
 
                                 {currentUser ? (
                                     <>
                                         <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> Host Event</Link>
+                                        <Link to="/venues/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> List Venue</Link>
                                         <Link to="/dashboard" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><BarChart size={20} /> Dashboard</Link>
                                         <Link to="/profile" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><User size={20} /> Profile</Link>
                                         <Link to="/notifications" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Bell size={20} /> Notifications {hasUnread && '🔴'}</Link>

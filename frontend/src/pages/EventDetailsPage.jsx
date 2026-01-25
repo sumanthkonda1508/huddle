@@ -407,7 +407,7 @@ export default function EventDetailsPage() {
                     <div className="sidebar-card">
                         <div style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
                             <span style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>
-                                {event.price > 0 ? `$${event.price}` : 'Free'}
+                                {event.price > 0 ? `₹${event.price}` : 'Free'}
                             </span>
                         </div>
 

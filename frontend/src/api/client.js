@@ -37,7 +37,7 @@ export const api = {
     joinEvent: (id, data) => client.post(`/events/${id}/join`, data),
     leaveEvent: (id) => client.post(`/events/${id}/leave`),
     syncUser: (data) => client.post('/users/sync', data),
-    subscribe: (plan) => client.post('/users/me/subscribe', { plan }),
+    subscribe: (data) => client.post('/users/me/subscribe', data),
     requestVerification: (url) => client.post('/users/me/verify_request', { documentUrl: url }),
     approveHost: (uid) => client.post(`/users/${uid}/approve`),
     getPendingUsers: () => client.get('/users/pending'),
@@ -55,6 +55,15 @@ export const api = {
     getNotifications: () => client.get('/notifications'),
     markNotificationRead: (id) => client.put(`/notifications/${id}/read`),
     markAllNotificationsRead: () => client.put('/notifications/read-all'),
+
+    // Venues
+    createVenue: (data) => client.post('/venues', data),
+    updateVenue: (id, data) => client.put(`/venues/${id}`, data),
+    deleteVenue: (id) => client.delete(`/venues/${id}`),
+    getVenues: () => client.get('/venues'),
+    getMyVenues: () => client.get('/venues/my'),
+    getVenueDetails: (id) => client.get(`/venues/${id}`),
+    requestVenueBooking: (id, data) => client.post(`/venues/${id}/book`, data),
 
     // Wishlist
     getWishlist: () => client.get('/users/me/wishlist'),

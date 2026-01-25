@@ -127,14 +127,21 @@ def update_user(uid):
 def subscribe_user():
     uid = g.user['uid']
     data = request.get_json()
-    plan = data.get('plan', 'basic') # basic or pro
+    plan_type = data.get('type', 'host') # 'host' or 'venue'
+    plan_name = data.get('plan', 'basic') 
     
-    users_ref.document(uid).set({
-        'plan': plan,
+    update_data = {
         'updatedAt': firestore.SERVER_TIMESTAMP
-    }, merge=True)
+    }
     
-    return jsonify({'message': 'Plan selected', 'plan': plan}), 200
+    if plan_type == 'venue':
+        update_data['venue_plan'] = plan_name
+    else:
+        update_data['host_plan'] = plan_name
+        
+    users_ref.document(uid).set(update_data, merge=True)
+    
+    return jsonify({'message': f'{plan_type.capitalize()} plan updated', 'plan': plan_name, 'type': plan_type}), 200
 
 @users_bp.route('/me/verify_request', methods=['POST'])
 @login_required

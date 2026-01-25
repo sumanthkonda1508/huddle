@@ -12,6 +12,17 @@ export const AuthProvider = ({ children }) => {
     const [userProfile, setUserProfile] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const refreshProfile = async () => {
+        if (currentUser) {
+            try {
+                const res = await client.get(`/users/${currentUser.uid}`);
+                setUserProfile(res.data);
+            } catch (e) {
+                console.error("Failed to refresh profile", e);
+            }
+        }
+    };
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             setCurrentUser(user);
@@ -41,7 +52,8 @@ export const AuthProvider = ({ children }) => {
     const value = {
         currentUser,
         userProfile,
-        loading
+        loading,
+        refreshProfile
     };
 
     return (

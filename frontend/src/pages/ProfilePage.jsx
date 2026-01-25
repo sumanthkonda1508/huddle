@@ -328,17 +328,35 @@ export default function ProfilePage() {
                             <div>
                                 <h4 style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.05em', marginBottom: '1rem' }}>Membership & Verification</h4>
                                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                    {/* Event Plan */}
                                     <div style={{
                                         padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
                                         flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'
                                     }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Current Plan</span>
-                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'capitalize' }}>{profile.plan || 'Free'} Plan</span>
-                                        {!profile.plan || profile.plan === 'free' ? (
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Event Plan</span>
+                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'capitalize' }}>
+                                            {profile.host_plan || profile.plan || 'Basic'} Host
+                                        </span>
+                                        {(!profile.host_plan || profile.host_plan === 'basic') && (!profile.plan || profile.plan === 'basic') && (
                                             <Link to="/plans" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>Upgrade to Pro →</Link>
-                                        ) : null}
+                                        )}
                                     </div>
 
+                                    {/* Venue Plan */}
+                                    <div style={{
+                                        padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                                        flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'
+                                    }}>
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Venue Plan</span>
+                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'capitalize' }}>
+                                            {profile.venue_plan === 'venue_pro' ? 'Venue Pro' : 'Basic Venue'}
+                                        </span>
+                                        {(!profile.venue_plan || profile.venue_plan !== 'venue_pro') && (
+                                            <Link to="/plans" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>Upgrade to Venue Pro →</Link>
+                                        )}
+                                    </div>
+
+                                    {/* Verification */}
                                     <div style={{
                                         padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
                                         flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'

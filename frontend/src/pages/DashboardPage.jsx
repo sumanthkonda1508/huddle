@@ -9,6 +9,7 @@ export default function DashboardPage() {
     const { currentUser, userProfile } = useAuth();
     const [hosted, setHosted] = useState([]);
     const [joined, setJoined] = useState([]);
+    const [venues, setVenues] = useState([]);
     const [wishlist, setWishlist] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('hosted');
@@ -19,11 +20,13 @@ export default function DashboardPage() {
         Promise.all([
             api.getHostedEvents(),
             api.getJoinedEvents(),
-            api.getWishlist()
-        ]).then(([hostedRes, joinedRes, wishlistRes]) => {
+            api.getWishlist(),
+            api.getMyVenues()
+        ]).then(([hostedRes, joinedRes, wishlistRes, venuesRes]) => {
             setHosted(hostedRes.data);
             setJoined(joinedRes.data);
             setWishlist(wishlistRes.data);
+            setVenues(venuesRes.data);
         }).catch(err => {
             console.error(err);
         }).finally(() => {
@@ -31,6 +34,7 @@ export default function DashboardPage() {
         });
     }, []);
 
+    // ... (handleDelete and handleRemoveFromWishlist match existing) ...
     const handleDelete = async (id) => {
         showDialog({
             title: 'Delete Event',
@@ -78,7 +82,7 @@ export default function DashboardPage() {
                     {isHosted ? "You haven't hosted any events yet." : "You haven't joined any events yet."}
                 </p>
                 {isHosted ? (
-                    <Link to="/create-event" className="btn">Create Your First Event</Link>
+                    <Link to="/events/new" className="btn">Create Your First Event</Link>
                 ) : (
                     <Link to="/" className="btn">Browse Events</Link>
                 )}
@@ -89,10 +93,9 @@ export default function DashboardPage() {
             <div className="event-grid">
                 {events.map(event => (
                     <div key={event.id} className="card event-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                        {/* Card Image Placeholder or Media logic could go here */}
                         <div style={{
                             height: '140px',
-                            background: 'linear-gradient(to right, #1E293B, #334155)', /* Fallback */
+                            background: 'linear-gradient(to right, #1E293B, #334155)',
                             borderRadius: 'var(--radius) var(--radius) 0 0',
                             margin: '-1.5rem -1.5rem 1rem -1.5rem',
                             position: 'relative',
@@ -134,6 +137,50 @@ export default function DashboardPage() {
         );
     };
 
+    const VenueList = ({ venues }) => {
+        if (venues.length === 0) return (
+            <div style={{ textAlign: 'center', padding: '4rem 2rem', background: 'var(--card-bg)', borderRadius: 'var(--radius)', border: '1px dashed var(--border-color)' }}>
+                <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+                    You haven't listed any venues yet.
+                </p>
+                <Link to="/venues/new" className="btn">List Your Venue</Link>
+            </div>
+        );
+
+        return (
+            <div className="event-grid">
+                {venues.map(venue => (
+                    <div key={venue.id} className="card event-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{
+                            height: '140px',
+                            background: 'linear-gradient(to right, #1E293B, #334155)',
+                            borderRadius: 'var(--radius) var(--radius) 0 0',
+                            margin: '-1.5rem -1.5rem 1rem -1.5rem',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            <img src={venue.images?.[0] || 'https://via.placeholder.com/400x200'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                        </div>
+
+                        <div style={{ flex: 1 }}>
+                            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>{venue.name}</h3>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={14} /> {venue.location}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><User size={14} /> Capacity: {venue.capacity}</span>
+                            </div>
+                        </div>
+
+                        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: '1fr', gap: '0.5rem' }}>
+                            <Link to={`/venues/${venue.id}`} className="btn-secondary" style={{ justifyContent: 'center' }}>
+                                View Details
+                            </Link>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
             {/* Header */}
@@ -142,7 +189,7 @@ export default function DashboardPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                         <div>
                             <h1 style={{ marginBottom: '0.5rem' }}>Welcome, {currentUser?.displayName || 'User'}!</h1>
-                            <p style={{ color: 'var(--text-secondary)' }}>Manage your events and upcoming plans.</p>
+                            <p style={{ color: 'var(--text-secondary)' }}>Manage your events, venues, and upcoming plans.</p>
                         </div>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                             {/* Admin Link Temporary for Dev or based on Role */}
@@ -175,6 +222,12 @@ export default function DashboardPage() {
                         Attending ({joined.length})
                     </button>
                     <button
+                        onClick={() => setActiveTab('venues')}
+                        className={`tab-btn ${activeTab === 'venues' ? 'active' : ''}`}
+                    >
+                        My Venues ({venues.length})
+                    </button>
+                    <button
                         onClick={() => setActiveTab('wishlist')}
                         className={`tab-btn ${activeTab === 'wishlist' ? 'active' : ''}`}
                     >
@@ -188,6 +241,9 @@ export default function DashboardPage() {
                 )}
                 {activeTab === 'joined' && (
                     <EventList events={joined} isHosted={false} />
+                )}
+                {activeTab === 'venues' && (
+                    <VenueList venues={venues} />
                 )}
                 {activeTab === 'wishlist' && (
                     <>
@@ -234,7 +290,6 @@ export default function DashboardPage() {
 
                                         <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                             {item.type === 'host' ? (
-                                                // Ideally link to a host profile if available, for now just a placeholder action or nothing
                                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                                     Get notified when they host next!
                                                 </span>

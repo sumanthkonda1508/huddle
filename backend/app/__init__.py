@@ -49,9 +49,11 @@ def create_app():
     from app.blueprints.users import users_bp
     from app.blueprints.events import events_bp
     from app.blueprints.notifications import notifications_bp
+    from app.blueprints.venues import venues_bp
     
     app.register_blueprint(users_bp, url_prefix='/api/users')
     app.register_blueprint(events_bp, url_prefix='/api/events')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(venues_bp, url_prefix='/api/venues')
     
     return app

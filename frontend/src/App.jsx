@@ -11,6 +11,9 @@ import NotificationsPage from './pages/NotificationsPage';
 import PlansPage from './pages/PlansPage';
 import VerificationPage from './pages/VerificationPage';
 import AdminPage from './pages/AdminPage';
+import VenuesPage from './pages/VenuesPage';
+import CreateVenuePage from './pages/CreateVenuePage';
+import VenueDetailsPage from './pages/VenueDetailsPage';
 
 // Define the router
 const router = createBrowserRouter(
@@ -27,6 +30,10 @@ const router = createBrowserRouter(
       <Route path="plans" element={<PlansPage />} />
       <Route path="verification" element={<VerificationPage />} />
       <Route path="admin" element={<AdminPage />} />
+      <Route path="venues" element={<VenuesPage />} />
+      <Route path="venues/new" element={<CreateVenuePage />} />
+      <Route path="venues/:id/edit" element={<CreateVenuePage />} />
+      <Route path="venues/:id" element={<VenueDetailsPage />} />
     </Route>
   )
 );
