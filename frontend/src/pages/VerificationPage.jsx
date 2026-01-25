@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
+import { ArrowLeft, FileText, CloudUpload, Lock } from 'lucide-react';
 
 export default function VerificationPage() {
     const [file, setFile] = useState(null);
@@ -61,7 +62,7 @@ export default function VerificationPage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <span>←</span> Back
+                        <ArrowLeft size={20} /> Back
                     </button>
                     <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
                         <h1 style={{ marginBottom: '1rem' }}>Identity Verification</h1>
@@ -100,8 +101,8 @@ export default function VerificationPage() {
                                         opacity: 0, cursor: 'pointer'
                                     }}
                                 />
-                                <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>
-                                    {file ? '📄' : '☁️'}
+                                <div style={{ fontSize: '3rem', marginBottom: '1rem', display: 'flex', justifyContent: 'center' }}>
+                                    {file ? <FileText size={48} /> : <CloudUpload size={48} />}
                                 </div>
                                 {file ? (
                                     <div>
@@ -119,7 +120,7 @@ export default function VerificationPage() {
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'start', gap: '1rem', background: '#FEF3C7', padding: '1rem', borderRadius: '8px', fontSize: '0.9rem', color: '#92400E' }}>
-                            <span>🔒</span>
+                            <span><Lock size={16} /></span>
                             <span>
                                 Your documents are securely stored and encrypted. They are only used for verification purposes and will never be shared publicly.
                             </span>

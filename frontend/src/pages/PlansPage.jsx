@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { ArrowLeft, Check } from 'lucide-react';
 
 export default function PlansPage() {
     const navigate = useNavigate();
@@ -30,7 +31,7 @@ export default function PlansPage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <span>←</span> Back
+                        <ArrowLeft size={20} /> Back
                     </button>
                     <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
                         <h1 style={{ marginBottom: '1rem', fontSize: '2.5rem' }}>Choose Your Hosting Plan</h1>
@@ -57,13 +58,13 @@ export default function PlansPage() {
                         <div style={{ width: '100%', height: '1px', background: 'var(--border-color)' }}></div>
                         <ul style={{ textAlign: 'left', listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span> Host 1 active event
+                                <span style={{ color: 'var(--primary)', fontWeight: 'bold', display: 'flex' }}><Check size={16} /></span> Host 1 active event
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span> Basic event analytics
+                                <span style={{ color: 'var(--primary)', fontWeight: 'bold', display: 'flex' }}><Check size={16} /></span> Basic event analytics
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>✓</span> Standard email support
+                                <span style={{ color: 'var(--primary)', fontWeight: 'bold', display: 'flex' }}><Check size={16} /></span> Standard email support
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-secondary)' }}>
                                 <span style={{ color: '#ccc' }}>−</span> No verified badge
@@ -105,19 +106,19 @@ export default function PlansPage() {
                         <div style={{ width: '100%', height: '1px', background: 'var(--border-color)' }}></div>
                         <ul style={{ textAlign: 'left', listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%' }}>✓</div>
+                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%', display: 'flex' }}><Check size={12} /></div>
                                 <strong>Unlimited</strong> active events
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%' }}>✓</div>
+                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%', display: 'flex' }}><Check size={12} /></div>
                                 Advanced Analytics & Insights
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%' }}>✓</div>
+                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%', display: 'flex' }}><Check size={12} /></div>
                                 Priority 24/7 Support
                             </li>
                             <li style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%' }}>✓</div>
+                                <div style={{ background: '#ecfdf5', color: '#059669', padding: '2px', borderRadius: '50%', display: 'flex' }}><Check size={12} /></div>
                                 <strong>Verified Host Badge</strong>
                             </li>
                         </ul>

@@ -4,14 +4,18 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import SEO from '../components/SEO';
+import { compressImage } from '../utils/imageUtils';
+import { ArrowLeft, Calendar, User, MapPin, FileText, Camera, MessageCircle, Trash2, Check, Users, Tag, Link as LinkIcon, Heart, Edit } from 'lucide-react';
 
 export default function EventDetailsPage() {
     const { id } = useParams();
     const [event, setEvent] = useState(null);
     const { currentUser } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [isUploadingCover, setIsUploadingCover] = useState(false);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
+    const [isPosting, setIsPosting] = useState(false);
     const [bookingData, setBookingData] = useState({ count: 1, guests: [] });
     const [bookingStep, setBookingStep] = useState(1); // 1: Count, 2: Details
     const navigate = useNavigate();
@@ -71,8 +75,9 @@ export default function EventDetailsPage() {
 
     const handlePostComment = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
+        if (!newComment.trim() || isPosting) return;
 
+        setIsPosting(true);
         try {
             await api.addComment(id, newComment);
             setNewComment('');
@@ -81,6 +86,8 @@ export default function EventDetailsPage() {
         } catch (error) {
             console.error(error);
             showDialog({ title: 'Error', message: 'Failed to post comment', type: 'error' });
+        } finally {
+            setIsPosting(false);
         }
     };
 
@@ -114,6 +121,33 @@ export default function EventDetailsPage() {
             showDialog({ title: 'Error', message: err.response?.data?.error || 'Failed to leave', type: 'error' });
         }
     }
+
+    const handleCoverChange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsUploadingCover(true);
+        try {
+            const base64 = await compressImage(file, { maxWidth: 1200, maxHeight: 800, quality: 0.7 });
+
+            // Create new mediaUrls array: replace first item or prepend
+            const newMediaUrls = [...(event.mediaUrls || [])];
+            if (newMediaUrls.length > 0) {
+                newMediaUrls[0] = base64;
+            } else {
+                newMediaUrls.push(base64);
+            }
+
+            await api.updateEvent(id, { mediaUrls: newMediaUrls });
+            setEvent(prev => ({ ...prev, mediaUrls: newMediaUrls }));
+            showDialog({ title: 'Success', message: 'Cover photo updated!', type: 'success' });
+        } catch (err) {
+            console.error(err);
+            showDialog({ title: 'Error', message: 'Failed to update cover photo', type: 'error' });
+        } finally {
+            setIsUploadingCover(false);
+        }
+    };
 
     const handleWishlist = async (type) => {
         try {
@@ -192,21 +226,50 @@ export default function EventDetailsPage() {
                 description={`${event.title} hosted by ${event.hostName || 'a community member'} in ${event.city}. Join now!`}
             />
             {/* Hero Header */}
-            <div className="event-hero">
+            <div className="event-hero" style={{
+                backgroundImage: event.mediaUrls?.[0] ? `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.7)), url(${event.mediaUrls[0]})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative'
+            }}>
+                {isHost && (
+                    <div style={{ position: 'absolute', top: '2rem', right: '2rem', zIndex: 10 }}>
+                        <input
+                            type="file"
+                            id="cover-upload"
+                            style={{ display: 'none' }}
+                            accept="image/*"
+                            onChange={handleCoverChange}
+                            disabled={isUploadingCover}
+                        />
+                        <label htmlFor="cover-upload" className="btn-secondary" style={{
+                            cursor: 'pointer',
+                            background: 'rgba(0,0,0,0.5)',
+                            color: 'white',
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            backdropFilter: 'blur(4px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}>
+                            <Camera size={16} /> {isUploadingCover ? 'Uploading...' : 'Change Cover'}
+                        </label>
+                    </div>
+                )}
                 <div className="back-nav">
-                    <button onClick={() => navigate(-1)} className="back-nav-btn">
-                        <span>←</span> Back
+                    <button onClick={() => navigate(-1)} className="back-nav-btn" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <ArrowLeft size={20} /> Back
                     </button>
                 </div>
                 <div className="container" style={{ padding: 0 }}>
-                    <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem', lineHeight: 1.2 }}>{event.title}</h1>
-                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', opacity: 0.9 }}>
+                    <h1 style={{ fontSize: '3rem', marginBottom: '0.5rem', lineHeight: 1.2, fontWeight: 600 }}>{event.title}</h1>
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', opacity: 0.9, fontWeight: 500 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            📅 {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} at {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            <Calendar size={18} /> {new Date(event.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })} at {new Date(event.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <span>•</span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            👤 Hosted by {event.hostName || 'Unknown'}
+                            <User size={18} /> Hosted by {event.hostName || 'Unknown'}
                         </span>
                     </div>
                 </div>
@@ -219,7 +282,7 @@ export default function EventDetailsPage() {
                 <div className="event-main-content">
                     {/* Maps & Location - Moved up for context */}
                     <div style={{ marginBottom: '2rem' }}>
-                        <h3 className="section-title">📍 Location</h3>
+                        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={20} /> Location</h3>
                         <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>{event.venue}, {event.city}</p>
                         <div style={{ width: '100%', height: '300px', borderRadius: 'var(--radius)', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
                             <iframe
@@ -236,7 +299,7 @@ export default function EventDetailsPage() {
 
                     {/* About */}
                     <div style={{ marginBottom: '3rem' }}>
-                        <h3 className="section-title">📝 About this Event</h3>
+                        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={20} /> About this Event</h3>
                         <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8, fontSize: '1.05rem' }}>
                             {event.description || 'No description provided.'}
                         </p>
@@ -245,7 +308,7 @@ export default function EventDetailsPage() {
                     {/* Gallery */}
                     {event.mediaUrls && event.mediaUrls.length > 0 && (
                         <div style={{ marginBottom: '3rem' }}>
-                            <h3 className="section-title">📸 Gallery</h3>
+                            <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Camera size={20} /> Gallery</h3>
                             <div style={{ display: 'grid', gap: '1rem' }}>
                                 {event.mediaUrls.length === 1 ? (
                                     <img
@@ -275,7 +338,7 @@ export default function EventDetailsPage() {
 
                     {/* Discussion */}
                     <div>
-                        <h3 className="section-title">💬 Discussion ({comments.length})</h3>
+                        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageCircle size={20} /> Discussion ({comments.length})</h3>
 
                         {/* Post Comment Form - Moved to top of comments */}
                         {currentUser && (
@@ -296,7 +359,9 @@ export default function EventDetailsPage() {
                                         style={{ marginBottom: '0.5rem', resize: 'vertical' }}
                                     />
                                     <div style={{ textAlign: 'right' }}>
-                                        <button type="submit" className="btn" disabled={!newComment.trim()}>Post</button>
+                                        <button type="submit" className="btn" disabled={!newComment.trim() || isPosting}>
+                                            {isPosting ? 'Posting...' : 'Post'}
+                                        </button>
                                     </div>
                                 </div>
                             </form>
@@ -314,9 +379,20 @@ export default function EventDetailsPage() {
                                     <div className="comment-bubble" style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
                                             <span style={{ fontWeight: 'bold' }}>{comment.displayName}</span>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                {new Date(comment.createdAt).toLocaleDateString()}
-                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    {new Date(comment.createdAt).toLocaleDateString()}
+                                                </span>
+                                                {(isHost || comment.userId === currentUser?.uid) && (
+                                                    <button
+                                                        onClick={() => handleDeleteComment(comment.id)}
+                                                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'var(--text-secondary)' }}
+                                                        title="Delete comment"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
                                         <p>{comment.text}</p>
                                     </div>
@@ -344,14 +420,14 @@ export default function EventDetailsPage() {
                                         <button
                                             onClick={handleDelete}
                                             className="btn-secondary"
-                                            style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)', justifyContent: 'center' }}
+                                            style={{ width: '100%', borderColor: 'var(--danger)', color: 'var(--danger)', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                                         >
-                                            🗑️ Delete Event
+                                            <Trash2 size={16} /> Delete Event
                                         </button>
                                     </div>
                                 ) : isParticipant ? (
                                     <div style={{ textAlign: 'center' }}>
-                                        <div style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '1rem', fontSize: '1.1rem' }}>✓ You are going!</div>
+                                        <div style={{ color: '#10b981', fontWeight: 'bold', marginBottom: '1rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}><Check size={20} /> You are going!</div>
                                         {event.allowCancellation !== false && (
                                             <button onClick={leaveEvent} style={{ color: 'var(--danger)', background: 'none', textDecoration: 'underline' }}>Leave Event</button>
                                         )}
@@ -379,25 +455,25 @@ export default function EventDetailsPage() {
 
                         <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <span>👥</span>
+                                <Users size={16} />
                                 <div>
                                     <strong>{currentCount}</strong> going <span style={{ color: 'var(--text-secondary)' }}>({event.maxParticipants} max)</span>
                                 </div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <span>🏷️</span>
+                                <Tag size={16} />
                                 <div>{event.hobby}</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <span>🔗</span>
+                                <LinkIcon size={16} />
                                 <button className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }} onClick={() => navigator.clipboard.writeText(window.location.href)}>Copy Link</button>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                                <button onClick={() => handleWishlist('host')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}>
-                                    ❤️ Save Host
+                                <button onClick={() => handleWishlist('host')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                                    <Heart size={14} /> Save Host
                                 </button>
-                                <button onClick={() => handleWishlist('place')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem' }}>
-                                    📍 Save Venue
+                                <button onClick={() => handleWishlist('place')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                                    <MapPin size={14} /> Save Venue
                                 </button>
                             </div>
                         </div>

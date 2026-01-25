@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { AlertTriangle, CheckCircle, HelpCircle } from 'lucide-react';
 
 const DialogContext = createContext();
 
@@ -72,9 +73,9 @@ export const DialogProvider = ({ children }) => {
 
                         {/* Header with Icon */}
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: '16px' }}>
-                            {dialog.type === 'error' && <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>}
-                            {dialog.type === 'success' && <div style={{ fontSize: '40px', marginBottom: '16px' }}>✅</div>}
-                            {dialog.type === 'confirm' && <div style={{ fontSize: '40px', marginBottom: '16px' }}>❓</div>}
+                            {dialog.type === 'error' && <div style={{ marginBottom: '16px', color: '#ef4444' }}><AlertTriangle size={40} /></div>}
+                            {dialog.type === 'success' && <div style={{ marginBottom: '16px', color: '#22c55e' }}><CheckCircle size={40} /></div>}
+                            {dialog.type === 'confirm' && <div style={{ marginBottom: '16px', color: '#3b82f6' }}><HelpCircle size={40} /></div>}
 
                             <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>{dialog.title}</h3>
                         </div>

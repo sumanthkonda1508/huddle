@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useDialog } from '../context/DialogContext';
+import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 
 export default function AdminPage() {
     const [pendingUsers, setPendingUsers] = useState([]);
@@ -50,7 +51,7 @@ export default function AdminPage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <span>←</span> Back to Home
+                        <ArrowLeft size={20} /> Back to Home
                     </button>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
@@ -73,7 +74,7 @@ export default function AdminPage() {
 
                     {pendingUsers.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-secondary)' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '1rem', color: '#10B981' }}>✓</div>
+                            <div style={{ marginBottom: '1rem', color: '#10B981', display: 'flex', justifyContent: 'center' }}><Check size={48} /></div>
                             <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All caught up!</h3>
                             <p>There are no pending verification requests.</p>
                         </div>
@@ -110,7 +111,7 @@ export default function AdminPage() {
                                                         display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
                                                     }}
                                                 >
-                                                    View ID <span>↗</span>
+                                                    View ID <ExternalLink size={14} />
                                                 </a>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>

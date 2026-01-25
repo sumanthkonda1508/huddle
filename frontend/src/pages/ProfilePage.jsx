@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
 import { api } from '../api/client';
+import { auth } from '../firebase';
+import { updateProfile } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
+import { MapPin, Calendar, User, Edit2, ArrowLeft, Camera, Trash2, Check, X } from 'lucide-react';
 
 export default function ProfilePage() {
     const { currentUser } = useAuth();
@@ -66,6 +69,15 @@ export default function ProfilePage() {
         setMessage('');
         try {
             await api.updateProfile(profile);
+
+            // Sync with Firebase Auth
+            if (currentUser && profile.displayName !== currentUser.displayName) {
+                await updateProfile(currentUser, {
+                    displayName: profile.displayName
+                    // Don't sync photoURL as it might be a base64 string which is too long for Firebase Auth
+                });
+            }
+
             setMessage('Profile updated successfully!');
             setInitialProfile(profile); // Update initial state on save
             setIsEditing(false);
@@ -110,6 +122,12 @@ export default function ProfilePage() {
         }
     }, [blocker, showDialog]);
 
+    const formatDate = (dateString) => {
+        if (!dateString) return '';
+        const d = new Date(dateString);
+        return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+    };
+
     if (loading) return <div className="loading">Loading Profile...</div>;
 
     return (
@@ -130,7 +148,7 @@ export default function ProfilePage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <span>←</span> Back
+                        <ArrowLeft size={20} /> Back
                     </button>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
@@ -138,9 +156,7 @@ export default function ProfilePage() {
                             <p style={{ color: 'var(--text-secondary)' }}>Manage your personal information and membership.</p>
                         </div>
                         {!isEditing && (
-                            <button onClick={() => setIsEditing(true)} className="btn-secondary">
-                                ✎ Edit Profile
-                            </button>
+                            <div />
                         )}
                     </div>
                 </div>
@@ -210,7 +226,7 @@ export default function ProfilePage() {
                                         fontSize: '2rem', border: '2px solid var(--border-color)',
                                         overflow: 'hidden', flexShrink: 0
                                     }}>
-                                        {!profile.avatarUrl && '👤'}
+                                        {!profile.avatarUrl && <User size={40} className="text-gray-400" />}
                                     </div>
 
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -285,13 +301,18 @@ export default function ProfilePage() {
                                 fontSize: '2.5rem', border: '4px solid white',
                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                             }}>
-                                {!profile.avatarUrl && '👤'}
+                                {!profile.avatarUrl && <User size={48} color="#94a3b8" />}
                             </div>
                             <div>
                                 <h2 style={{ margin: '0 0 0.5rem 0', fontSize: '1.8rem' }}>{profile.displayName || 'Anonymous User'}</h2>
                                 <div style={{ display: 'flex', gap: '1.5rem', color: 'var(--text-secondary)' }}>
-                                    <span>📍 {profile.city || 'No city set'}</span>
-                                    <span>📅 Joined {new Date(currentUser?.metadata?.creationTime).toLocaleDateString()}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={16} /> {profile.city || 'No city set'}</span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Calendar size={16} /> Joined {formatDate(currentUser?.metadata?.creationTime)}</span>
+                                </div>
+                                <div style={{ marginTop: '1rem' }}>
+                                    <button onClick={() => setIsEditing(true)} className="btn-secondary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>
+                                        <Edit2 size={16} /> Edit Profile
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -326,7 +347,7 @@ export default function ProfilePage() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                             {profile.isVerified ? (
                                                 <>
-                                                    <span style={{ color: '#10B981', fontSize: '1.2rem' }}>✓</span>
+                                                    <Check size={20} color="#10B981" />
                                                     <span style={{ fontWeight: 'bold' }}>Verified Host</span>
                                                 </>
                                             ) : profile.verificationStatus === 'pending' ? (

@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useNavigate, useParams } from 'react-router-dom';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
+import { ArrowLeft, Calendar, MapPin, Image, Settings, User, Users } from 'lucide-react';
 
 export default function CreateEventPage() {
     const { showDialog } = useDialog();
@@ -225,15 +226,16 @@ export default function CreateEventPage() {
             <button
                 onClick={() => navigate(-1)}
                 className="back-btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
-                <span>←</span> Back
+                <ArrowLeft size={20} /> Back
             </button>
             <h1 className="page-title">{isEditing ? 'Edit Event' : 'Host an Event'}</h1>
 
             <form onSubmit={handleSubmit}>
                 {/* Event Details Section */}
                 <div className="form-section">
-                    <h2 className="section-title">📅 Event Details</h2>
+                    <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={24} /> Event Details</h2>
                     <div className="form-grid">
                         <div className="form-group">
                             <label className="form-label">Event Title</label>
@@ -288,7 +290,7 @@ export default function CreateEventPage() {
 
                 {/* Location Section */}
                 <div className="form-section">
-                    <h2 className="section-title">📍 Location & Time</h2>
+                    <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={24} /> Location & Time</h2>
                     <div className="form-grid">
                         <div className="form-group">
                             <label className="form-label">Venue / Meeting Point (Search)</label>
@@ -350,7 +352,7 @@ export default function CreateEventPage() {
                 </div>
 
                 <div className="form-section">
-                    <h2 className="section-title">🖼️ Event Images</h2>
+                    <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Image size={24} /> Event Images</h2>
                     <div className="form-group">
                         <label className="form-label">Upload Photos (Max 5)</label>
                         <input
@@ -396,7 +398,7 @@ export default function CreateEventPage() {
 
                 {/* Settings Section */}
                 <div className="form-section">
-                    <h2 className="section-title">⚙️ Settings & Type</h2>
+                    <h2 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Settings size={24} /> Settings & Type</h2>
 
                     <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                         <label className="form-label" style={{ marginBottom: '1rem' }}>Event Type</label>
@@ -410,7 +412,7 @@ export default function CreateEventPage() {
                                     onChange={handleChange}
                                 />
                                 <div className="card-content">
-                                    <div className="card-icon">👤</div>
+                                    <div className="card-icon"><User size={24} /></div>
                                     <div className="card-title">Solo Event</div>
                                     <div className="card-desc">Individual participation only.</div>
                                 </div>
@@ -424,7 +426,7 @@ export default function CreateEventPage() {
                                     onChange={handleChange}
                                 />
                                 <div className="card-content">
-                                    <div className="card-icon">👥</div>
+                                    <div className="card-icon"><Users size={24} /></div>
                                     <div className="card-title">Group Event</div>
                                     <div className="card-desc">Allow guests and teams.</div>
                                 </div>

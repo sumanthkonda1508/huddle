@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Inbox, Calendar, Bell } from 'lucide-react';
 
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState([]);
@@ -59,7 +60,7 @@ export default function NotificationsPage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <span>←</span> Back
+                        <ArrowLeft size={20} /> Back
                     </button>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
@@ -78,7 +79,7 @@ export default function NotificationsPage() {
             <div className="container" style={{ maxWidth: '800px', paddingBottom: '4rem' }}>
                 {notifications.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-secondary)' }}>
-                        <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>📭</div>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5, display: 'flex', justifyContent: 'center' }}><Inbox size={48} /></div>
                         <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All caught up!</h3>
                         <p>You have no new notifications at the moment.</p>
                     </div>
@@ -108,7 +109,7 @@ export default function NotificationsPage() {
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     fontSize: '1.2rem'
                                 }}>
-                                    {n.title.toLowerCase().includes('event') ? '📅' : '🔔'}
+                                    {n.title.toLowerCase().includes('event') ? <Calendar size={20} /> : <Bell size={20} />}
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>

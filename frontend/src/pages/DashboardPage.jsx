@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
+import { MapPin, Tag, Plus, User, Calendar } from 'lucide-react';
 
 export default function DashboardPage() {
     const { currentUser, userProfile } = useAuth();
@@ -112,8 +113,8 @@ export default function DashboardPage() {
                         <div style={{ flex: 1 }}>
                             <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem' }}>{event.title}</h3>
                             <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                                <span>📍 {event.city}</span>
-                                <span>🏷️ {event.hobby}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={14} /> {event.city}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Tag size={14} /> {event.hobby}</span>
                             </div>
                         </div>
 
@@ -150,8 +151,8 @@ export default function DashboardPage() {
                                     Admin Dashboard
                                 </Link>
                             )}
-                            <Link to="/events/new" className="btn">
-                                + New Event
+                            <Link to="/events/new" className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Plus size={18} /> New Event
                             </Link>
                         </div>
                     </div>
@@ -227,7 +228,7 @@ export default function DashboardPage() {
                                         {item.details && (
                                             <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
                                                 {item.details.eventName && <div style={{ marginBottom: '0.25rem' }}>From: <strong>{item.details.eventName}</strong></div>}
-                                                {item.details.eventCity && <div>📍 {item.details.eventCity}</div>}
+                                                {item.details.eventCity && <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MapPin size={14} /> {item.details.eventCity}</div>}
                                             </div>
                                         )}
 

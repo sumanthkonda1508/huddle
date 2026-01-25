@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { api } from '../api/client';
 import { Link } from 'react-router-dom';
 import SEO from '../components/SEO';
+import { MapPin, Search, X, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
     const [events, setEvents] = useState([]);
@@ -97,9 +98,9 @@ export default function HomePage() {
                         <div style={{ marginTop: '1rem' }}>
                             <button
                                 onClick={clearFilters}
-                                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.9rem' }}
+                                style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--text-primary)', padding: '0.25rem 0.75rem', borderRadius: '20px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
                             >
-                                Clear Filters ✕
+                                Clear Filters <X size={14} />
                             </button>
                         </div>
                     )}
@@ -140,15 +141,15 @@ export default function HomePage() {
                                             {new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                         </div>
                                         <h3 className="event-title-card">{event.title}</h3>
-                                        <div className="event-location">
-                                            <span>📍</span> {event.city}
+                                        <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <MapPin size={14} /> {event.city}
                                         </div>
 
                                         <div className="event-card-footer">
                                             <div className="price-tag">
                                                 {event.price > 0 ? `$${event.price}` : 'Free'}
                                             </div>
-                                            <span className="btn-card">Details →</span>
+                                            <span className="btn-card" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Details <ArrowRight size={14} /></span>
                                         </div>
                                     </div>
                                 </div>
