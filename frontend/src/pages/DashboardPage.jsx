@@ -16,6 +16,20 @@ export default function DashboardPage() {
     const navigate = useNavigate();
     const { showDialog } = useDialog();
 
+    const handleHostEvent = (e) => {
+        e.preventDefault();
+        if (userProfile?.isVerified) {
+            navigate('/events/new');
+        } else {
+            showDialog({
+                title: 'Verification Required',
+                message: 'You need to be a verified host to create an event.',
+                type: 'confirm',
+                onConfirm: () => navigate('/verification')
+            });
+        }
+    };
+
     useEffect(() => {
         Promise.all([
             api.getHostedEvents(),
@@ -82,7 +96,7 @@ export default function DashboardPage() {
                     {isHosted ? "You haven't hosted any events yet." : "You haven't joined any events yet."}
                 </p>
                 {isHosted ? (
-                    <Link to="/events/new" className="btn">Create Your First Event</Link>
+                    <button onClick={handleHostEvent} className="btn" style={{ fontSize: '1rem', cursor: 'pointer' }}>Create Your First Event</button>
                 ) : (
                     <Link to="/" className="btn">Browse Events</Link>
                 )}
@@ -143,8 +157,11 @@ export default function DashboardPage() {
                 <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
                     You haven't listed any venues yet.
                 </p>
-                <Link to="/venues/new" className="btn">List Your Venue</Link>
-            </div>
+
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                    <Link to="/venues/new" className="btn">List Your Venue</Link>
+                </div>
+            </div >
         );
 
         return (
@@ -198,9 +215,9 @@ export default function DashboardPage() {
                                     Admin Dashboard
                                 </Link>
                             )}
-                            <Link to="/events/new" className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button onClick={handleHostEvent} className="btn" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', fontSize: '1rem', cursor: 'pointer' }}>
                                 <Plus size={18} /> New Event
-                            </Link>
+                            </button>
                         </div>
                     </div>
                 </div>

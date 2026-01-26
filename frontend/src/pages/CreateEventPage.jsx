@@ -87,7 +87,7 @@ export default function CreateEventPage() {
                         onConfirm: () => navigate('/')
                     });
                 } else {
-                    navigate('/plans');
+                    navigate('/verification');
                 }
             } catch (err) {
                 console.error("Profile check failed", err);

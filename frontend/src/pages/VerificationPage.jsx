@@ -50,7 +50,7 @@ export default function VerificationPage() {
             <div className="dashboard-header">
                 <div className="container">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/dashboard')}
                         style={{
                             background: 'none',
                             border: 'none',
@@ -62,7 +62,7 @@ export default function VerificationPage() {
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
-                        <ArrowLeft size={20} /> Back
+                        <ArrowLeft size={20} /> Back to Dashboard
                     </button>
                     <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
                         <h1 style={{ marginBottom: '1rem' }}>Identity Verification</h1>
