@@ -7,7 +7,7 @@ import { useDialog } from '../context/DialogContext';
 
 export default function PlansPage() {
     const navigate = useNavigate();
-    const { currentUser, refreshProfile } = useAuth();
+    const { currentUser, userProfile, refreshProfile } = useAuth();
     const [activeTab, setActiveTab] = React.useState('organizer');
     const [loading, setLoading] = React.useState(false);
     const { showDialog } = useDialog();
@@ -15,6 +15,17 @@ export default function PlansPage() {
     const handleSelectPlan = async (plan, type) => {
         if (!currentUser) {
             navigate('/login');
+            return;
+        }
+
+        // Check if user is verified
+        if (!userProfile?.isVerified) {
+            showDialog({
+                title: 'Verification Required',
+                message: 'You need to be a verified member to subscribe to a plan. Would you like to proceed to verification?',
+                type: 'confirm',
+                onConfirm: () => navigate('/verification')
+            });
             return;
         }
 
