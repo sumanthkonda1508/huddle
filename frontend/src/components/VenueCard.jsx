@@ -1,34 +1,37 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Users } from 'lucide-react';
+import { MapPin, Users, ArrowRight } from 'lucide-react';
 
 export default function VenueCard({ venue }) {
     return (
-        <Link to={`/venues/${venue.id}`} className="event-card" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <div className="event-card-image-container">
-                <img
-                    src={venue.images?.[0] || 'https://via.placeholder.com/400x200?text=Venue'}
-                    alt={venue.name}
-                    className="event-card-image"
-                />
-            </div>
-            <div className="event-card-content">
-                <h3 className="event-card-title">{venue.name}</h3>
-
-                <div className="event-card-details">
-                    <div className="event-card-detail-item">
-                        <MapPin size={16} />
-                        <span>{venue.location}</span>
-                    </div>
-                    <div className="event-card-detail-item">
-                        <Users size={16} />
-                        <span>Capacity: {venue.capacity}</span>
-                    </div>
+        <Link to={`/venues/${venue.id}`} style={{ textDecoration: 'none' }}>
+            <div className="event-card">
+                <div className="event-card-image">
+                    <img
+                        src={venue.images?.[0] || 'https://via.placeholder.com/400x200?text=Venue'}
+                        alt={venue.name}
+                        className="event-card-img-placeholder"
+                        onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.background = 'linear-gradient(45deg, #334155, #475569)'; }}
+                    />
+                    <div className="category-badge">Venue</div>
                 </div>
 
-                <div className="event-card-footer">
-                    <div className="event-card-price">
-                        {venue.price_per_hour ? `₹${venue.price_per_hour}/hr` : 'Contact for Price'}
+                <div className="event-card-content">
+                    <div className="event-date" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Users size={14} /> Capacity: {venue.capacity}
+                    </div>
+
+                    <h3 className="event-title-card">{venue.name}</h3>
+
+                    <div className="event-location" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <MapPin size={14} /> {venue.location}
+                    </div>
+
+                    <div className="event-card-footer">
+                        <div className="price-tag">
+                            {venue.price_per_hour ? `₹${venue.price_per_hour}/hr` : 'Contact for Price'}
+                        </div>
+                        <span className="btn-card" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Details <ArrowRight size={14} /></span>
                     </div>
                 </div>
             </div>
