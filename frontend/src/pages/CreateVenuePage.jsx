@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { Upload, MapPin, Users, DollarSign, Image as ImageIcon, Phone, Mail, Globe, CheckSquare, X } from 'lucide-react';
+import { ArrowLeft, Building, MapPin, Users, DollarSign, Image as ImageIcon, Phone, Mail, Globe, CheckSquare, X, Info, Utensils } from 'lucide-react';
 import { CITIES, AMENITIES, CATERING_OPTIONS } from '../base/venue_constants';
 import { compressImage } from '../utils/imageUtils';
 
@@ -146,10 +146,15 @@ export default function CreateVenuePage() {
     const showLimitBanner = !isEditing;
 
     return (
-        <div className="container fade-in" style={{ maxWidth: '800px', margin: '0 auto', paddingBottom: '3rem' }}>
-            <h1 className="page-title" style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                {isEditing ? 'Edit Venue' : 'List Your Venue'}
-            </h1>
+        <div className="create-event-container">
+            <button
+                onClick={() => navigate(-1)}
+                className="back-btn"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+                <ArrowLeft size={20} /> Back
+            </button>
+            <h1 className="page-title">{isEditing ? 'Edit Venue' : 'List Your Venue'}</h1>
 
             {/* Plan Status Banner - Only for New */}
             {showLimitBanner && (
@@ -176,7 +181,7 @@ export default function CreateVenuePage() {
                         <button
                             onClick={() => navigate('/plans')}
                             className="btn-primary"
-                            style={{ background: 'var(--primary)', fontSize: '0.9rem' }}
+                            style={{ background: 'var(--primary)', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', color: 'white' }}
                         >
                             Upgrade to Pro
                         </button>
@@ -184,70 +189,130 @@ export default function CreateVenuePage() {
                 </div>
             )}
 
-            <div className="card" style={{ padding: '2rem' }}>
-                <form onSubmit={handleSubmit} className="form-group">
-                    {/* Basic Info */}
-                    <div className="section-title" style={{ fontWeight: 600, fontSize: '1.2rem', marginBottom: '1rem', color: 'var(--primary)' }}>Basic Information</div>
-
-                    <div className="form-field">
-                        <label className="form-label">Venue Name *</label>
-                        <input type="text" name="name" value={formData.name} onChange={handleChange} className="form-input" required />
-                    </div>
-
-                    <div className="form-row">
-                        <div className="form-field">
-                            <label className="form-label">City *</label>
-                            <select name="city" value={formData.city} onChange={handleChange} className="form-input" required>
-                                <option value="">Select City</option>
-                                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
-                            </select>
+            <form onSubmit={handleSubmit}>
+                {/* Basic Info Section */}
+                <div className="form-section">
+                    <h2 className="section-title"><Building size={24} /> Basic Information</h2>
+                    <div className="form-grid">
+                        <div className="form-group">
+                            <label className="form-label">Venue Name *</label>
+                            <input
+                                type="text"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleChange}
+                                className="input-field"
+                                placeholder="e.g. Grand Banquet Hall"
+                                required
+                            />
                         </div>
-                        <div className="form-field">
-                            <label className="form-label">Full Address *</label>
-                            <input type="text" name="location" value={formData.location} onChange={handleChange} className="form-input" placeholder="Street, Area, Pin Code" required />
+
+                        <div className="form-grid two-col">
+                            <div className="form-group">
+                                <label className="form-label">City *</label>
+                                <select
+                                    name="city"
+                                    value={formData.city}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    required
+                                >
+                                    <option value="">Select City</option>
+                                    {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Full Address *</label>
+                                <input
+                                    type="text"
+                                    name="location"
+                                    value={formData.location}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    placeholder="Street, Area, Pin Code"
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Description</label>
+                            <textarea
+                                name="description"
+                                value={formData.description}
+                                onChange={handleChange}
+                                className="input-field"
+                                rows="4"
+                                placeholder="Describe the ambiance, suitable events, and key highlights..."
+                            />
                         </div>
                     </div>
+                </div>
 
-                    <div className="form-row">
-                        <div className="form-field">
+                {/* Capacity & Pricing Section */}
+                <div className="form-section">
+                    <h2 className="section-title"><Info size={24} /> Capacity & Pricing</h2>
+                    <div className="form-grid two-col">
+                        <div className="form-group">
                             <label className="form-label">Capacity (Guests) *</label>
-                            <input type="number" name="capacity" value={formData.capacity} onChange={handleChange} className="form-input" required />
+                            <div style={{ position: 'relative' }}>
+                                <Users size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="number"
+                                    name="capacity"
+                                    value={formData.capacity}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    placeholder="e.g. 500"
+                                    required
+                                />
+                            </div>
                         </div>
-                        <div className="form-field">
+                        <div className="form-group">
                             <label className="form-label">Price per Hour (₹)</label>
-                            <input type="number" name="price_per_hour" value={formData.price_per_hour} onChange={handleChange} className="form-input" />
+                            <div style={{ position: 'relative' }}>
+                                <DollarSign size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="number"
+                                    name="price_per_hour"
+                                    value={formData.price_per_hour}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    placeholder="e.g. 2000"
+                                />
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <div className="form-field">
-                        <label className="form-label">Description</label>
-                        <textarea name="description" value={formData.description} onChange={handleChange} className="form-textarea" rows="4" placeholder="Describe the ambiance, suitable events..."></textarea>
-                    </div>
+                {/* Features & Amenities Section */}
+                <div className="form-section">
+                    <h2 className="section-title"><CheckSquare size={24} /> Features & Amenities</h2>
 
-                    {/* Features */}
-                    <div className="section-title" style={{ fontWeight: 600, fontSize: '1.2rem', margin: '2rem 0 1rem 0', color: 'var(--primary)' }}>Features & Amenities</div>
-
-                    <div className="form-field">
+                    <div className="form-group" style={{ marginBottom: '2rem' }}>
                         <label className="form-label">Amenities</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '0.5rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
                             {AMENITIES.map(amenity => (
-                                <label key={amenity} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px' }}>
+                                <label key={amenity} className="selection-card" style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', cursor: 'pointer' }}>
                                     <input
                                         type="checkbox"
                                         checked={formData.amenities.includes(amenity)}
                                         onChange={() => handleAmenityChange(amenity)}
+                                        style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--primary)', position: 'static', opacity: 1, cursor: 'pointer' }}
                                     />
-                                    <span style={{ fontSize: '0.9rem' }}>{amenity}</span>
+                                    <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{amenity}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
 
-                    <div className="form-field">
-                        <label className="form-label">Catering Policy</label>
-                        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                    <div className="form-group">
+                        <label className="form-label"><Utensils size={18} style={{ display: 'inline', marginRight: '0.5rem' }} /> Catering Policy</label>
+                        <div className="selection-grid">
                             {CATERING_OPTIONS.map(opt => (
-                                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                                <label key={opt.value} className="selection-card">
                                     <input
                                         type="radio"
                                         name="catering"
@@ -255,94 +320,130 @@ export default function CreateVenuePage() {
                                         checked={formData.catering === opt.value}
                                         onChange={handleChange}
                                     />
-                                    {opt.label}
+                                    <div className="card-content" style={{ padding: '1rem', flexDirection: 'row', justifyContent: 'flex-start', textAlign: 'left' }}>
+                                        <div style={{ flex: 1, fontWeight: 600 }}>{opt.label}</div>
+                                    </div>
                                 </label>
                             ))}
                         </div>
                     </div>
+                </div>
 
-                    {/* Media */}
-                    <div className="section-title" style={{ fontWeight: 600, fontSize: '1.2rem', margin: '2rem 0 1rem 0', color: 'var(--primary)' }}>Images</div>
-                    <div className="form-field">
+                {/* Images Section */}
+                <div className="form-section">
+                    <h2 className="section-title"><ImageIcon size={24} /> Venue Image</h2>
+                    <div className="form-group">
                         <label className="form-label">Cover Image</label>
-                        <div style={{ border: '2px dashed var(--border-color)', borderRadius: 'var(--radius)', padding: '2rem', textAlign: 'center', background: 'var(--bg-secondary)', position: 'relative' }}>
+                        <div className="upload-area" style={{ position: 'relative', minHeight: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <input
                                 type="file"
                                 accept="image/*"
                                 onChange={handleImageChange}
                                 style={{
                                     position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-                                    opacity: 0, cursor: 'pointer'
+                                    opacity: 0, cursor: 'pointer', zIndex: 5
                                 }}
                             />
                             {formData.imageUrl ? (
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', justifyContent: 'center' }}>
                                     <img
                                         src={formData.imageUrl}
                                         alt="Cover Preview"
-                                        style={{ maxHeight: '200px', maxWidth: '100%', borderRadius: 'var(--radius)', objectFit: 'cover' }}
+                                        style={{ maxHeight: '300px', maxWidth: '100%', borderRadius: 'var(--radius)', objectFit: 'cover' }}
                                     />
                                     <button
                                         type="button"
                                         onClick={(e) => {
-                                            e.preventDefault();
+                                            e.preventDefault(); // Prevent file dialog from opening again via label/bubbling if any
                                             handleRemoveImage();
                                         }}
                                         style={{
                                             position: 'absolute', top: '-10px', right: '-10px',
-                                            background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '50%',
-                                            width: '24px', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            zIndex: 10
+                                            background: 'var(--danger)', color: 'white', border: '2px solid white', borderRadius: '50%',
+                                            width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            zIndex: 10, boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
                                         }}
+                                        title="Remove Image"
                                     >
-                                        <X size={14} />
+                                        <X size={18} />
                                     </button>
                                 </div>
                             ) : (
                                 <div style={{ pointerEvents: 'none' }}>
-                                    <Upload size={32} style={{ color: 'var(--text-secondary)', marginBottom: '0.5rem' }} />
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Click or drag image to upload</p>
+                                    <ImageIcon size={48} style={{ color: 'var(--text-secondary)', marginBottom: '1rem', display: 'block', margin: '0 auto 1rem' }} />
+                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 500 }}>Click or drag to upload cover image</p>
+                                    <p style={{ margin: '0.5rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>JPG, PNG up to 5MB</p>
                                 </div>
                             )}
                         </div>
                     </div>
+                </div>
 
-                    {/* Contact Info */}
-                    <div className="section-title" style={{ fontWeight: 600, fontSize: '1.2rem', margin: '2rem 0 1rem 0', color: 'var(--primary)' }}>Contact Details</div>
-                    <div className="form-row">
-                        <div className="form-field">
-                            <label className="form-label"><Phone size={16} /> Contact Phone *</label>
+                {/* Contact Info Section */}
+                <div className="form-section">
+                    <h2 className="section-title"><Phone size={24} /> Contact Details</h2>
+                    <div className="form-grid two-col">
+                        <div className="form-group">
+                            <label className="form-label">Contact Phone *</label>
+                            <div style={{ position: 'relative' }}>
+                                <Phone size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="tel"
+                                    name="contact_phone"
+                                    value={formData.contact_phone}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setFormData(prev => ({ ...prev, contact_phone: val }));
+                                    }}
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    placeholder="10-digit mobile number"
+                                    required
+                                />
+                            </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Contact Email *</label>
+                            <div style={{ position: 'relative' }}>
+                                <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="email"
+                                    name="contact_email"
+                                    value={formData.contact_email}
+                                    onChange={handleChange}
+                                    className="input-field"
+                                    style={{ paddingLeft: '2.5rem' }}
+                                    required
+                                />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Website (Optional)</label>
+                        <div style={{ position: 'relative' }}>
+                            <Globe size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                             <input
-                                type="tel"
-                                name="contact_phone"
-                                value={formData.contact_phone}
-                                onChange={(e) => {
-                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                    setFormData(prev => ({ ...prev, contact_phone: val }));
-                                }}
-                                className="form-input"
-                                placeholder="10-digit mobile number"
-                                required
+                                type="url"
+                                name="website"
+                                value={formData.website}
+                                onChange={handleChange}
+                                className="input-field"
+                                style={{ paddingLeft: '2.5rem' }}
+                                placeholder="https://yourvenue.com"
                             />
                         </div>
-                        <div className="form-field">
-                            <label className="form-label"><Mail size={16} /> Contact Email *</label>
-                            <input type="email" name="contact_email" value={formData.contact_email} onChange={handleChange} className="form-input" required />
-                        </div>
                     </div>
-                    <div className="form-field">
-                        <label className="form-label"><Globe size={16} /> Website (Optional)</label>
-                        <input type="url" name="website" value={formData.website} onChange={handleChange} className="form-input" placeholder="https://" />
-                    </div>
+                </div>
 
-                    <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                        <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary">Cancel</button>
-                        <button type="submit" className="btn btn-primary" disabled={loading}>
-                            {loading ? 'Saving...' : (isEditing ? 'Save Changes' : 'List Venue')}
-                        </button>
-                    </div>
-                </form>
-            </div>
+                <div className="form-actions">
+                    <button type="submit" className="btn btn-lg" disabled={loading}>
+                        {loading ? 'Saving...' : (isEditing ? 'Save Changes' : 'List Venue')}
+                    </button>
+                    <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary btn-lg">
+                        Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }
