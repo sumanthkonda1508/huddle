@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
 import { MapPin, Calendar, User, Edit2, ArrowLeft, Camera, Trash2, Check, X } from 'lucide-react';
+import ImageCropper from '../components/ImageCropper';
 
 export default function ProfilePage() {
     const { currentUser } = useAuth();
@@ -30,6 +31,8 @@ export default function ProfilePage() {
     const [saving, setSaving] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [message, setMessage] = useState('');
+    const [cropImageSrc, setCropImageSrc] = useState(null);
+    const [isCropping, setIsCropping] = useState(false);
 
     useEffect(() => {
         if (currentUser) loadProfile();
@@ -236,17 +239,17 @@ export default function ProfilePage() {
                                                 <input
                                                     type="file"
                                                     accept="image/*"
-                                                    onChange={async (e) => {
+                                                    onChange={(e) => {
                                                         const file = e.target.files[0];
                                                         if (file) {
-                                                            try {
-                                                                const base64 = await compressImage(file, { maxWidth: 300, maxHeight: 300 });
-                                                                setProfile(prev => ({ ...prev, avatarUrl: base64 }));
-                                                            } catch (err) {
-                                                                showDialog({ title: 'Error', message: 'Failed to process image', type: 'error' });
-                                                            }
+                                                            const reader = new FileReader();
+                                                            reader.addEventListener('load', () => {
+                                                                setCropImageSrc(reader.result);
+                                                                setIsCropping(true);
+                                                            });
+                                                            reader.readAsDataURL(file);
                                                         }
-                                                        // Reset input
+                                                        // Reset input so selecting same file works again
                                                         e.target.value = null;
                                                     }}
                                                     style={{ display: 'none' }}
@@ -384,6 +387,21 @@ export default function ProfilePage() {
                     </div>
                 )}
             </div>
+            {isCropping && (
+                <ImageCropper
+                    imageSrc={cropImageSrc}
+                    aspect={1}
+                    onCancel={() => {
+                        setIsCropping(false);
+                        setCropImageSrc(null);
+                    }}
+                    onCropComplete={(croppedImg) => {
+                        setProfile(prev => ({ ...prev, avatarUrl: croppedImg }));
+                        setIsCropping(false);
+                        setCropImageSrc(null);
+                    }}
+                />
+            )}
         </div>
     );
 }
