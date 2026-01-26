@@ -8,7 +8,7 @@ import { ArrowLeft, Calendar, MapPin, Image, Settings, User, Users } from 'lucid
 export default function CreateEventPage() {
     const { showDialog } = useDialog();
     const [formData, setFormData] = useState({
-        title: '', description: '', city: '', hobby: '', venue: '', address: '', coordinates: null, price: 0,
+        title: '', description: '', city: '', hobby: '', venue: '', address: '', coordinates: null, price: '',
         date: '', maxParticipants: 10, eventType: 'solo', maxTicketsPerUser: 4
     });
     const { id } = useParams();
@@ -177,8 +177,10 @@ export default function CreateEventPage() {
             // Data already contains base64 mediaUrls if set by handleImageChange
             // No separate upload step needed!
 
+            const payload = { ...formData, price: Number(formData.price) || 0 };
+
             if (isEditing) {
-                await api.updateEvent(id, formData);
+                await api.updateEvent(id, payload);
                 showDialog({
                     title: 'Success',
                     message: 'Event updated successfully!',
@@ -186,7 +188,7 @@ export default function CreateEventPage() {
                     onConfirm: () => navigate(`/events/${id}`)
                 });
             } else {
-                await api.createEvent(formData);
+                await api.createEvent(payload);
                 navigate('/');
             }
         } catch (error) {
@@ -454,10 +456,15 @@ export default function CreateEventPage() {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                value={formData.price || 0}
+                                name="price"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={formData.price}
                                 onChange={handleChange}
                                 required
                                 className="input-field"
+                                placeholder="0"
                             />
                             <div className="helper-text">Set to 0 for free events</div>
                         </div>

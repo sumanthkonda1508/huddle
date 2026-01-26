@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { ArrowLeft, Building, MapPin, Users, DollarSign, Image as ImageIcon, Phone, Mail, Globe, CheckSquare, X, Info, Utensils } from 'lucide-react';
+import { ArrowLeft, Building, MapPin, Users, IndianRupee, Image as ImageIcon, Phone, Mail, Globe, CheckSquare, X, Info, Utensils } from 'lucide-react';
 import { CITIES, AMENITIES, CATERING_OPTIONS } from '../base/venue_constants';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
@@ -277,7 +277,7 @@ export default function CreateVenuePage() {
                         <div className="form-group">
                             <label className="form-label">Price per Hour (₹)</label>
                             <div style={{ position: 'relative' }}>
-                                <DollarSign size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                <IndianRupee size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
                                 <input
                                     type="number"
                                     name="price_per_hour"

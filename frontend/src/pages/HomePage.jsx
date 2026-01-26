@@ -147,7 +147,7 @@ export default function HomePage() {
 
                                         <div className="event-card-footer">
                                             <div className="price-tag">
-                                                {event.price > 0 ? `$${event.price}` : 'Free'}
+                                                {event.price > 0 ? `₹${event.price}` : 'Free'}
                                             </div>
                                             <span className="btn-card" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>Details <ArrowRight size={14} /></span>
                                         </div>

@@ -41,6 +41,7 @@ export const api = {
     requestVerification: (url) => client.post('/users/me/verify_request', { documentUrl: url }),
     approveHost: (uid) => client.post(`/users/${uid}/approve`),
     getPendingUsers: () => client.get('/users/pending'),
+    getApprovedUsers: () => client.get('/users/approved'),
 
     // Comments
     getComments: (eventId) => client.get(`/events/${eventId}/comments`),

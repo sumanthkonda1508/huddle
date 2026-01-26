@@ -24,10 +24,7 @@ export default function Layout() {
         }
     }, [currentUser]);
 
-    const handleLogout = async () => {
-        await signOut(auth);
-        navigate('/login');
-    }
+
 
     return (
         <DialogProvider>
@@ -81,7 +78,6 @@ export default function Layout() {
                                             </div>
                                             <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{currentUser.displayName || 'User'}</span>
                                         </Link>
-                                        <button onClick={handleLogout} className="btn" style={{ padding: '0.4rem 1rem', backgroundColor: 'var(--danger)', fontSize: '0.8rem' }}>Logout</button>
                                     </div>
                                 </>
                             ) : (
@@ -108,7 +104,7 @@ export default function Layout() {
                                         <Link to="/profile" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><User size={20} /> Profile</Link>
                                         <Link to="/notifications" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Bell size={20} /> Notifications {hasUnread && '🔴'}</Link>
                                         {isAdmin && <Link to="/admin" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Shield size={20} /> Admin</Link>}
-                                        <button onClick={() => { handleLogout(); setIsOpen(false); }} className="btn" style={{ marginTop: '1rem', width: '100%' }}>Logout</button>
+
                                     </>
                                 ) : (
                                     <Link to="/login" onClick={() => setIsOpen(false)} className="btn" style={{ textAlign: 'center' }}>Login</Link>

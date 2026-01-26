@@ -2,11 +2,11 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
 import { api } from '../api/client';
 import { auth } from '../firebase';
-import { updateProfile } from 'firebase/auth';
+import { updateProfile, signOut } from 'firebase/auth';
 import { useAuth } from '../context/AuthContext';
 import { compressImage } from '../utils/imageUtils';
 import { useDialog } from '../context/DialogContext';
-import { MapPin, Calendar, User, Edit2, ArrowLeft, Camera, Trash2, Check, X } from 'lucide-react';
+import { MapPin, Calendar, User, Edit2, ArrowLeft, Camera, Trash2, Check, X, LogOut } from 'lucide-react';
 import ImageCropper from '../components/ImageCropper';
 
 export default function ProfilePage() {
@@ -64,6 +64,16 @@ export default function ProfilePage() {
                 setProfile(prev => ({ ...prev, avatarUrl: '' }));
             }
         });
+    };
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+            navigate('/login');
+        } catch (error) {
+            console.error("Failed to log out", error);
+            setMessage('Failed to log out.');
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -159,7 +169,19 @@ export default function ProfilePage() {
                             <p style={{ color: 'var(--text-secondary)' }}>Manage your personal information and membership.</p>
                         </div>
                         {!isEditing && (
-                            <div />
+                            <button
+                                onClick={handleLogout}
+                                className="btn"
+                                style={{
+                                    backgroundColor: '#fee2e2',
+                                    color: '#b91c1c',
+                                    border: '1px solid #fecaca',
+                                    padding: '0.5rem 1rem',
+                                    display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem'
+                                }}
+                            >
+                                <LogOut size={16} /> Logout
+                            </button>
                         )}
                     </div>
                 </div>
