@@ -15,6 +15,7 @@ function BookingModal({ venue, onClose }) {
         end_time: ''
     });
     const [loading, setLoading] = useState(false);
+    const { showDialog } = useDialog();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -25,11 +26,11 @@ function BookingModal({ venue, onClose }) {
                 user_id: currentUser.uid,
                 user_email: currentUser.email
             });
-            alert("Booking request sent successfully!");
+            showDialog({ title: 'Success', message: "Booking request sent successfully!", type: 'success' });
             onClose();
         } catch (error) {
             console.error(error);
-            alert("Failed to send booking request.");
+            showDialog({ title: 'Error', message: "Failed to send booking request.", type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -262,11 +263,19 @@ export default function VenueDetailsPage() {
                                                 onConfirm: async () => {
                                                     try {
                                                         await api.deleteVenue(venue.id);
-                                                        alert("Venue deleted.");
-                                                        navigate('/venues');
+                                                        showDialog({
+                                                            title: 'Success',
+                                                            message: "Venue deleted.",
+                                                            type: 'success',
+                                                            onConfirm: () => navigate('/venues')
+                                                        });
                                                     } catch (err) {
                                                         console.error(err);
-                                                        alert("Failed to delete venue: " + (err.response?.data?.error || err.message));
+                                                        showDialog({
+                                                            title: 'Error',
+                                                            message: "Failed to delete venue: " + (err.response?.data?.error || err.message),
+                                                            type: 'error'
+                                                        });
                                                     }
                                                 }
                                             });

@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Check } from 'lucide-react';
+import { useDialog } from '../context/DialogContext';
 
 export default function PlansPage() {
     const navigate = useNavigate();
     const { currentUser, refreshProfile } = useAuth();
     const [activeTab, setActiveTab] = React.useState('organizer');
     const [loading, setLoading] = React.useState(false);
+    const { showDialog } = useDialog();
 
     const handleSelectPlan = async (plan, type) => {
         if (!currentUser) {
@@ -16,26 +18,39 @@ export default function PlansPage() {
             return;
         }
 
-        if (window.confirm(`Confirm upgrade to ${plan.replace('_', ' ').toUpperCase()} plan?`)) {
-            setLoading(true);
-            try {
-                await api.subscribe({ plan, type });
-                await refreshProfile(); // Refresh profile to update plan status immediately
-                alert(`Successfully subscribed to ${plan} plan!`);
+        showDialog({
+            title: `Confirm Upgrade`,
+            message: `Confirm upgrade to ${plan.replace('_', ' ').toUpperCase()} plan?`,
+            type: 'confirm',
+            onConfirm: async () => {
+                setLoading(true);
+                try {
+                    await api.subscribe({ plan, type });
+                    await refreshProfile(); // Refresh profile to update plan status immediately
+                    showDialog({
+                        title: 'Success',
+                        message: `Successfully subscribed to ${plan} plan!`,
+                        type: 'success'
+                    });
 
-                // Navigate based on plan type
-                if (type === 'venue') {
-                    navigate('/venues/new'); // Go back to listing
-                } else {
-                    navigate('/dashboard');
+                    // Navigate based on plan type
+                    if (type === 'venue') {
+                        navigate('/venues/new'); // Go back to listing
+                    } else {
+                        navigate('/dashboard');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showDialog({
+                        title: 'Error',
+                        message: "Failed to update plan. Please try again.",
+                        type: 'error'
+                    });
+                } finally {
+                    setLoading(false);
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Failed to update plan. Please try again.");
-            } finally {
-                setLoading(false);
             }
-        }
+        });
     };
 
     return (

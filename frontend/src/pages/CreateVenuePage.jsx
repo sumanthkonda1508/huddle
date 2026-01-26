@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Building, MapPin, Users, DollarSign, Image as ImageIcon, Phone, Mail, Globe, CheckSquare, X, Info, Utensils } from 'lucide-react';
 import { CITIES, AMENITIES, CATERING_OPTIONS } from '../base/venue_constants';
 import { compressImage } from '../utils/imageUtils';
+import { useDialog } from '../context/DialogContext';
 
 export default function CreateVenuePage() {
     const { currentUser, userProfile } = useAuth();
@@ -14,6 +15,7 @@ export default function CreateVenuePage() {
 
     const [loading, setLoading] = useState(false);
     const [venueCount, setVenueCount] = useState(null);
+    const { showDialog } = useDialog();
     const [formData, setFormData] = useState({
         name: '',
         location: '',
@@ -52,7 +54,7 @@ export default function CreateVenuePage() {
                 })
                 .catch(err => {
                     console.error("Failed to load venue", err);
-                    alert("Failed to load venue details");
+                    showDialog({ title: 'Error', message: "Failed to load venue details", type: 'error' });
                     navigate('/venues');
                 })
                 .finally(() => setLoading(false));
@@ -78,7 +80,7 @@ export default function CreateVenuePage() {
             setFormData(prev => ({ ...prev, imageUrl: base64 }));
         } catch (err) {
             console.error("Image processing failed", err);
-            alert('Failed to process image. Please try another file.');
+            showDialog({ title: 'Error', message: 'Failed to process image. Please try another file.', type: 'error' });
         }
     };
 
@@ -103,7 +105,7 @@ export default function CreateVenuePage() {
 
         // Validate Phone (Indian Mobile Format)
         if (!/^[6-9]\d{9}$/.test(formData.contact_phone)) {
-            alert("Please enter a valid 10-digit Indian mobile number.");
+            showDialog({ title: 'Validation Error', message: "Please enter a valid 10-digit Indian mobile number.", type: 'alert' });
             setLoading(false);
             return;
         }
@@ -116,7 +118,7 @@ export default function CreateVenuePage() {
 
             if (isEditing) {
                 await api.updateVenue(id, payload);
-                alert("Venue updated successfully!");
+                showDialog({ title: 'Success', message: "Venue updated successfully!", type: 'success' });
                 navigate(-1);
             } else {
                 payload.owner_id = currentUser.uid;
@@ -126,11 +128,14 @@ export default function CreateVenuePage() {
         } catch (error) {
             console.error("Failed to save venue:", error);
             if (!isEditing && (error.response?.status === 403 || (error.response?.data?.error && error.response.data.error.includes('limit reached')))) {
-                if (window.confirm("You've reached the limit for free venue listings. Upgrade to Venue Pro to list unlimited venues?")) {
-                    navigate('/plans');
-                }
+                showDialog({
+                    title: 'Upgrade Required',
+                    message: "You've reached the limit for free venue listings. Upgrade to Venue Pro to list unlimited venues?",
+                    type: 'confirm',
+                    onConfirm: () => navigate('/plans')
+                });
             } else {
-                alert("Failed to save venue. " + (error.response?.data?.error || "Please check required fields."));
+                showDialog({ title: 'Error', message: "Failed to save venue. " + (error.response?.data?.error || "Please check required fields."), type: 'error' });
             }
         } finally {
             setLoading(false);

@@ -235,7 +235,7 @@ export default function ProfilePage() {
                                     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                                             <label className="btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', fontSize: '0.9rem', padding: '0.4rem 0.8rem' }}>
-                                                {profile.avatarUrl ? 'Replace Photo' : 'Upload Photo'}
+                                                {profile.avatarUrl ? 'Update Photo' : 'Upload Photo'}
                                                 <input
                                                     type="file"
                                                     accept="image/*"
