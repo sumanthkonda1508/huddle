@@ -15,6 +15,24 @@ export default function VerificationPage() {
         setFile(e.target.files[0]);
     };
 
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const res = await api.getProfile();
+                if (res.data.verificationStatus === 'rejected') {
+                    showDialog({
+                        title: 'Verification Rejected',
+                        message: 'Your previous verification request was rejected. Please ensure your documents are clear and valid, then try again.',
+                        type: 'info'
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+        checkStatus();
+    }, []);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!file) return;

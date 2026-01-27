@@ -395,12 +395,16 @@ export default function ProfilePage() {
                                                 </>
                                             ) : profile.verificationStatus === 'pending' ? (
                                                 <span style={{ color: '#F59E0B', fontWeight: 'bold' }}>Verification Pending...</span>
+                                            ) : profile.verificationStatus === 'rejected' ? (
+                                                <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>Verification Rejected</span>
                                             ) : (
                                                 <span style={{ color: 'var(--text-secondary)' }}>Standard Member</span>
                                             )}
                                         </div>
                                         {!profile.isVerified && profile.verificationStatus !== 'pending' && (
-                                            <Link to="/verification" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>Request Verification →</Link>
+                                            <Link to="/verification" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>
+                                                {profile.verificationStatus === 'rejected' ? 'Retry Verification →' : 'Request Verification →'}
+                                            </Link>
                                         )}
                                     </div>
                                 </div>

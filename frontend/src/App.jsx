@@ -14,12 +14,14 @@ import AdminPage from './pages/AdminPage';
 import VenuesPage from './pages/VenuesPage';
 import CreateVenuePage from './pages/CreateVenuePage';
 import VenueDetailsPage from './pages/VenueDetailsPage';
+import EventsPage from './pages/EventsPage';
 
 // Define the router
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="/" element={<Layout />}>
       <Route index element={<HomePage />} />
+      <Route path="events" element={<EventsPage />} />
       <Route path="login" element={<LoginPage />} />
       <Route path="events/new" element={<CreateEventPage />} />
       <Route path="events/:id/edit" element={<CreateEventPage />} />

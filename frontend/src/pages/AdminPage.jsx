@@ -50,6 +50,25 @@ export default function AdminPage() {
         }
     }
 
+    const handleReject = async (uid) => {
+        try {
+            await api.rejectHost(uid);
+            showDialog({
+                title: 'Rejected',
+                message: 'User request rejected.',
+                type: 'info'
+            });
+            setPendingUsers(prev => prev.filter(u => u.uid !== uid));
+        } catch (err) {
+            console.error(err);
+            showDialog({
+                title: 'Error',
+                message: 'Failed to reject',
+                type: 'error'
+            });
+        }
+    }
+
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
             <div className="dashboard-header">
@@ -131,6 +150,19 @@ export default function AdminPage() {
                                                 </a>
                                             </td>
                                             <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                                                <button
+                                                    onClick={() => handleReject(user.uid)}
+                                                    className="btn"
+                                                    style={{
+                                                        padding: '0.5rem 1rem',
+                                                        fontSize: '0.9rem',
+                                                        background: '#EF4444', // Red
+                                                        boxShadow: 'none',
+                                                        marginRight: '0.5rem'
+                                                    }}
+                                                >
+                                                    Reject
+                                                </button>
                                                 <button
                                                     onClick={() => handleApprove(user.uid)}
                                                     className="btn"

@@ -40,6 +40,7 @@ export const api = {
     subscribe: (data) => client.post('/users/me/subscribe', data),
     requestVerification: (url) => client.post('/users/me/verify_request', { documentUrl: url }),
     approveHost: (uid) => client.post(`/users/${uid}/approve`),
+    rejectHost: (uid) => client.post(`/users/${uid}/reject`),
     getPendingUsers: () => client.get('/users/pending'),
     getApprovedUsers: () => client.get('/users/approved'),
 

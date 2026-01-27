@@ -5,6 +5,7 @@ from app.middleware import login_required
 from app.utils import format_doc
 from . import users_bp
 from datetime import datetime
+from app.blueprints.notifications.routes import create_notification
 
 db = firestore.client()
 users_ref = db.collection('users')
@@ -175,8 +176,29 @@ def approve_host(uid):
         'verificationStatus': 'approved',
         'updatedAt': firestore.SERVER_TIMESTAMP
     }, merge=True)
+
     
+    create_notification(uid, 'Verification Approved', 'Your account has been verified as a host.', 'system')
     return jsonify({'message': 'User verified'}), 200
+
+@users_bp.route('/<uid>/reject', methods=['POST'])
+@login_required
+def reject_host(uid):
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
+    users_ref.document(uid).set({
+        'isVerified': False,
+        'verificationStatus': 'rejected',
+        'updatedAt': firestore.SERVER_TIMESTAMP
+    }, merge=True)
+
+    
+    create_notification(uid, 'Verification Rejected', 'Your request to become a host has been rejected. Please update your documents and try again.', 'system')
+    return jsonify({'message': 'User verification rejected'}), 200
 
 @users_bp.route('/pending', methods=['GET'])
 @login_required

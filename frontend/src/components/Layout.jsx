@@ -5,7 +5,8 @@ import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { api } from '../api/client';
 import { DialogProvider } from '../context/DialogContext';
-import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin } from 'lucide-react';
+import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin, Calendar } from 'lucide-react';
+import Footer from './Footer';
 
 export default function Layout() {
     const { currentUser, isAdmin } = useAuth();
@@ -46,7 +47,7 @@ export default function Layout() {
 
                         {/* Desktop Nav */}
                         <nav className="nav-links desktop-only">
-                            <Link to="/">Events</Link>
+                            <Link to="/events">Events</Link>
                             <Link to="/venues">Venues</Link>
                             {currentUser ? (
                                 <>
@@ -94,6 +95,7 @@ export default function Layout() {
                                 </div>
 
                                 <Link to="/" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Home size={20} /> Home</Link>
+                                <Link to="/events" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Calendar size={20} /> Events</Link>
                                 <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>
 
                                 {currentUser ? (
@@ -122,9 +124,10 @@ export default function Layout() {
                     </div>
                 </header>
 
-                <main className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem' }}>
+                <main className="container" style={{ paddingTop: '2rem', paddingBottom: '2rem', minHeight: '80vh' }}>
                     <Outlet />
                 </main>
+                <Footer />
             </div>
         </DialogProvider>
     );
