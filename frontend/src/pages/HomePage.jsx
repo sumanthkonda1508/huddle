@@ -194,23 +194,7 @@ export default function HomePage() {
             </div>
 
             <div className="container">
-                {/* Categories */}
-                <div style={{ marginBottom: '4rem' }}>
-                    <div className="section-header">
-                        <div>
-                            <span className="section-label">Browse by Category</span>
-                            <h2 className="section-title-lg">Find Your Vibe</h2>
-                        </div>
-                    </div>
-                    <div className="category-scroll">
-                        {CATEGORIES.map(cat => (
-                            <button key={cat.id} className="category-pill" onClick={() => { setSearchMode('events'); navigate(`/?hobby=${cat.name}`) }}>
-                                <cat.icon size={18} />
-                                {cat.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+
 
                 {/* Upcoming Events */}
                 <div style={{ marginBottom: '5rem' }}>
@@ -276,7 +260,7 @@ export default function HomePage() {
                     </div>
                 </div>
 
-                {/* Testimonials / Trust */}
+                {/* Testimonials / Trust - Commented out for later use
                 <div style={{
                     background: 'var(--card-bg)',
                     borderRadius: '24px',
@@ -311,6 +295,7 @@ export default function HomePage() {
                         </div>
                     </div>
                 </div>
+                */}
             </div>
         </div>
     );
