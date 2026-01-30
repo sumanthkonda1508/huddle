@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useDialog } from '../context/DialogContext';
 import SEO from '../components/SEO';
 import { compressImage } from '../utils/imageUtils';
-import { ArrowLeft, Calendar, User, MapPin, FileText, Camera, MessageCircle, Trash2, Check, Users, Tag, Link as LinkIcon, Heart, Edit } from 'lucide-react';
+import { ArrowLeft, Calendar, User, MapPin, FileText, Camera, MessageCircle, Trash2, Check, Users, Tag, Share2, Heart, Edit } from 'lucide-react';
 
 export default function EventDetailsPage() {
     const { id } = useParams();
@@ -465,8 +465,30 @@ export default function EventDetailsPage() {
                                 <div>{event.hobby}</div>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                <LinkIcon size={16} />
-                                <button className="btn-secondary" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }} onClick={() => navigator.clipboard.writeText(window.location.href)}>Copy Link</button>
+                                <Share2 size={16} />
+                                <button
+                                    className="btn-secondary"
+                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }}
+                                    onClick={async () => {
+                                        const shareData = {
+                                            title: event.title,
+                                            text: `Check out ${event.title} on Huddle!`,
+                                            url: window.location.href
+                                        };
+                                        if (navigator.share) {
+                                            try {
+                                                await navigator.share(shareData);
+                                            } catch (err) {
+                                                console.log('Error sharing:', err);
+                                            }
+                                        } else {
+                                            navigator.clipboard.writeText(window.location.href);
+                                            showDialog({ title: 'Success', message: 'Link copied to clipboard!', type: 'success' });
+                                        }
+                                    }}
+                                >
+                                    Share Link
+                                </button>
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
                                 <button onClick={() => handleWishlist('host')} className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>

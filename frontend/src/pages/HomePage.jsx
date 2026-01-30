@@ -196,69 +196,70 @@ export default function HomePage() {
             <div className="container">
 
 
-                {/* Upcoming Events */}
-                <div style={{ marginBottom: '5rem' }}>
-                    <div className="section-header">
-                        <div>
-                            <span className="section-label">Don't Miss Out</span>
-                            <h2 className="section-title-lg">Upcoming Events</h2>
+                {/* Dynamic Content Section */}
+                {searchMode === 'events' ? (
+                    <div style={{ marginBottom: '5rem' }}>
+                        <div className="section-header">
+                            <div>
+                                <span className="section-label">Don't Miss Out</span>
+                                <h2 className="section-title-lg">Upcoming Events</h2>
+                            </div>
+                            <Link to="/events" className="btn-secondary">Explore Events <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} /></Link>
                         </div>
-                        <Link to="/events" className="btn-secondary">Explore Events <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} /></Link>
-                    </div>
 
-                    {loading ? (
-                        <div>Loading...</div>
-                    ) : (
+                        {loading ? (
+                            <div>Loading...</div>
+                        ) : (
+                            <div className="event-grid">
+                                {events.map(event => (
+                                    <Link key={event.id} to={`/events/${event.id}`} style={{ textDecoration: 'none' }}>
+                                        <div className="event-card">
+                                            <div className="event-card-image">
+                                                <img
+                                                    src={event.mediaUrls && event.mediaUrls.length > 0 ? event.mediaUrls[0] : `https://source.unsplash.com/random/800x600/?${event.hobby},event`}
+                                                    alt={event.title}
+                                                    className="event-card-img-placeholder"
+                                                    onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.background = 'linear-gradient(45deg, #334155, #475569)'; }}
+                                                />
+                                                <div className="category-badge">{event.hobby}</div>
+                                            </div>
+                                            <div className="event-card-content">
+                                                <div className="event-date">
+                                                    {new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                </div>
+                                                <h3 className="event-title-card">{event.title}</h3>
+                                                <div className="event-location">
+                                                    <MapPin size={14} /> {event.city}
+                                                </div>
+                                                <div className="event-card-footer">
+                                                    <div className="price-tag">{event.price > 0 ? `₹${event.price}` : 'Free'}</div>
+                                                    <span className="btn-card">Details &rarr;</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div style={{ marginBottom: '5rem' }}>
+                        <div className="section-header">
+                            <div>
+                                <span className="section-label">Host Your Own</span>
+                                <h2 className="section-title-lg">Featured Venues</h2>
+                            </div>
+                            <Link to="/venues" className="btn-secondary">Explore Venues <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} /></Link>
+                        </div>
+
                         <div className="event-grid">
-                            {events.map(event => (
-                                <Link key={event.id} to={`/events/${event.id}`} style={{ textDecoration: 'none' }}>
-                                    <div className="event-card">
-                                        <div className="event-card-image">
-                                            <img
-                                                src={event.mediaUrls && event.mediaUrls.length > 0 ? event.mediaUrls[0] : `https://source.unsplash.com/random/800x600/?${event.hobby},event`}
-                                                alt={event.title}
-                                                className="event-card-img-placeholder"
-                                                onError={(e) => { e.target.style.display = 'none'; e.target.parentElement.style.background = 'linear-gradient(45deg, #334155, #475569)'; }}
-                                            />
-                                            <div className="category-badge">{event.hobby}</div>
-                                        </div>
-                                        <div className="event-card-content">
-                                            <div className="event-date">
-                                                {new Date(event.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                                            </div>
-                                            <h3 className="event-title-card">{event.title}</h3>
-                                            <div className="event-location">
-                                                <MapPin size={14} /> {event.city}
-                                            </div>
-                                            <div className="event-card-footer">
-                                                <div className="price-tag">{event.price > 0 ? `₹${event.price}` : 'Free'}</div>
-                                                <span className="btn-card">Details &rarr;</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </Link>
+                            {featuredVenues.length === 0 && !loading && <p>No venues found.</p>}
+                            {featuredVenues.map(venue => (
+                                <VenueCard key={venue.id} venue={venue} />
                             ))}
                         </div>
-                    )}
-                </div>
-
-                {/* Featured Venues */}
-                <div style={{ marginBottom: '5rem' }}>
-                    <div className="section-header">
-                        <div>
-                            <span className="section-label">Host Your Own</span>
-                            <h2 className="section-title-lg">Featured Venues</h2>
-                        </div>
-                        <Link to="/venues" className="btn-secondary">Explore Venues <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} /></Link>
                     </div>
-
-                    <div className="event-grid">
-                        {featuredVenues.length === 0 && !loading && <p>No venues found.</p>}
-                        {featuredVenues.map(venue => (
-                            <VenueCard key={venue.id} venue={venue} />
-                        ))}
-                    </div>
-                </div>
+                )}
 
                 {/* Testimonials / Trust - Commented out for later use
                 <div style={{
