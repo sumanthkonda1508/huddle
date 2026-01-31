@@ -456,10 +456,6 @@ export default function CreateEventPage() {
                                 type="number"
                                 min="0"
                                 step="0.01"
-                                name="price"
-                                type="number"
-                                min="0"
-                                step="0.01"
                                 value={formData.price}
                                 onChange={handleChange}
                                 required
