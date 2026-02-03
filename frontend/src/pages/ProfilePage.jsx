@@ -10,7 +10,7 @@ import { MapPin, Calendar, User, Edit2, ArrowLeft, Camera, Trash2, Check, X, Log
 import ImageCropper from '../components/ImageCropper';
 
 export default function ProfilePage() {
-    const { currentUser } = useAuth();
+    const { currentUser, refreshProfile } = useAuth();
     const navigate = useNavigate();
     const { showDialog } = useDialog();
     const [profile, setProfile] = useState({
@@ -43,6 +43,9 @@ export default function ProfilePage() {
             const res = await api.getProfile();
             setProfile(prev => ({ ...prev, ...res.data }));
             setInitialProfile(prev => ({ ...prev, ...res.data })); // Set initial state
+
+            // Sync AuthContext with latest profile data
+            await refreshProfile();
         } catch (err) {
             console.error(err);
         } finally {
@@ -351,61 +354,74 @@ export default function ProfilePage() {
                             </div>
 
                             <div>
-                                <h4 style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.05em', marginBottom: '1rem' }}>Membership & Verification</h4>
-                                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                    {/* Event Plan */}
-                                    <div style={{
-                                        padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
-                                        flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'
-                                    }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Event Plan</span>
-                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'capitalize' }}>
-                                            {profile.host_plan || profile.plan || 'Basic'} Host
-                                        </span>
-                                        {(!profile.host_plan || profile.host_plan === 'basic') && (!profile.plan || profile.plan === 'basic') && (
-                                            <Link to="/plans" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>Upgrade to Pro →</Link>
-                                        )}
-                                    </div>
+                                {/* Hosting & Venues Actions */}
+                                <div>
+                                    <h4 style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.05em', marginBottom: '1rem' }}>Hosting & Venues</h4>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
 
-                                    {/* Venue Plan */}
-                                    <div style={{
-                                        padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
-                                        flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'
-                                    }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Venue Plan</span>
-                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold', textTransform: 'capitalize' }}>
-                                            {profile.venue_plan === 'venue_pro' ? 'Venue Pro' : 'Basic Venue'}
-                                        </span>
-                                        {(!profile.venue_plan || profile.venue_plan !== 'venue_pro') && (
-                                            <Link to="/plans" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>Upgrade to Venue Pro →</Link>
-                                        )}
-                                    </div>
-
-                                    {/* Verification */}
-                                    <div style={{
-                                        padding: '1rem 1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
-                                        flex: 1, minWidth: '200px', display: 'flex', flexDirection: 'column', gap: '0.5rem'
-                                    }}>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Host Status</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            {profile.isVerified ? (
-                                                <>
-                                                    <Check size={20} color="#10B981" />
-                                                    <span style={{ fontWeight: 'bold' }}>Verified Host</span>
-                                                </>
-                                            ) : profile.verificationStatus === 'pending' ? (
-                                                <span style={{ color: '#F59E0B', fontWeight: 'bold' }}>Verification Pending...</span>
-                                            ) : profile.verificationStatus === 'rejected' ? (
-                                                <span style={{ color: 'var(--danger)', fontWeight: 'bold' }}>Verification Rejected</span>
-                                            ) : (
-                                                <span style={{ color: 'var(--text-secondary)' }}>Standard Member</span>
-                                            )}
+                                        {/* Host Event Section */}
+                                        <div style={{
+                                            padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                                            background: '#fff', display: 'flex', flexDirection: 'column', gap: '1rem'
+                                        }}>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>Want to host an event?</h3>
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                                    {profile.isVerified ? 'You are a verified host. Create amazing events now!' : 'Verify your identity to start hosting events.'}
+                                                </p>
+                                            </div>
+                                            <div style={{ marginTop: 'auto' }}>
+                                                {profile.isVerified ? (
+                                                    <button
+                                                        onClick={() => navigate('/events/new')}
+                                                        className="btn"
+                                                        style={{ width: '100%' }}
+                                                    >
+                                                        Create Event
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => navigate('/verification')}
+                                                        className="btn-secondary"
+                                                        style={{ width: '100%', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                                                    >
+                                                        {profile.verificationStatus === 'pending' ? 'Verification Pending...' : 'Become a Host'}
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                        {!profile.isVerified && profile.verificationStatus !== 'pending' && (
-                                            <Link to="/verification" style={{ color: 'var(--primary)', fontSize: '0.9rem', fontWeight: '500' }}>
-                                                {profile.verificationStatus === 'rejected' ? 'Retry Verification →' : 'Request Verification →'}
-                                            </Link>
-                                        )}
+
+                                        {/* List Venue Section */}
+                                        <div style={{
+                                            padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)',
+                                            background: '#fff', display: 'flex', flexDirection: 'column', gap: '1rem'
+                                        }}>
+                                            <div>
+                                                <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>Want to list your venue?</h3>
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                                                    {profile.isVenueVerified ? 'You are a verified venue owner. List your space!' : 'Verify your property to start listing venues.'}
+                                                </p>
+                                            </div>
+                                            <div style={{ marginTop: 'auto' }}>
+                                                {profile.isVenueVerified ? (
+                                                    <button
+                                                        onClick={() => navigate('/venues/new')}
+                                                        className="btn"
+                                                        style={{ width: '100%' }}
+                                                    >
+                                                        List Venue
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => navigate('/venue-verification')}
+                                                        className="btn-secondary"
+                                                        style={{ width: '100%', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                                                    >
+                                                        {profile.venueVerificationStatus === 'pending' ? 'Venue Verification Pending...' : 'List Your Venue'}
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

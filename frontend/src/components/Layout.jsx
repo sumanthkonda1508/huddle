@@ -9,7 +9,7 @@ import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin, Cale
 import Footer from './Footer';
 
 export default function Layout() {
-    const { currentUser, isAdmin } = useAuth();
+    const { currentUser, userProfile, isAdmin } = useAuth();
     const navigate = useNavigate();
     const [hasUnread, setHasUnread] = React.useState(false);
     const [isOpen, setIsOpen] = React.useState(false);
@@ -48,11 +48,11 @@ export default function Layout() {
                         {/* Desktop Nav */}
                         <nav className="nav-links desktop-only">
                             <Link to="/events">Events</Link>
-                            <Link to="/venues">Venues</Link>
+                            {(userProfile?.isVerified || userProfile?.isVenueVerified) && <Link to="/venues">Venues</Link>}
                             {currentUser ? (
                                 <>
-                                    <Link to="/events/new">Host Event</Link>
-                                    <Link to="/venues/new">List Venue</Link>
+                                    {userProfile?.isVerified && <Link to="/events/new">Host Event</Link>}
+                                    {userProfile?.isVenueVerified && <Link to="/venues/new">List Venue</Link>}
                                     <Link to="/dashboard">Dashboard</Link>
                                     {isAdmin && <Link to="/admin" style={{ color: 'red' }}>Admin</Link>}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -96,12 +96,12 @@ export default function Layout() {
 
                                 <Link to="/" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Home size={20} /> Home</Link>
                                 <Link to="/events" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Calendar size={20} /> Events</Link>
-                                <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>
+                                {(userProfile?.isVerified || userProfile?.isVenueVerified) && <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>}
 
                                 {currentUser ? (
                                     <>
-                                        <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> Host Event</Link>
-                                        <Link to="/venues/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> List Venue</Link>
+                                        {userProfile?.isVerified && <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> Host Event</Link>}
+                                        {userProfile?.isVenueVerified && <Link to="/venues/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> List Venue</Link>}
                                         <Link to="/dashboard" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><BarChart size={20} /> Dashboard</Link>
                                         <Link to="/profile" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><User size={20} /> Profile</Link>
                                         <Link to="/notifications" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Bell size={20} /> Notifications {hasUnread && '🔴'}</Link>
@@ -128,7 +128,7 @@ export default function Layout() {
                     <Outlet />
                 </main>
                 <Footer />
-            </div>
-        </DialogProvider>
+            </div >
+        </DialogProvider >
     );
 }

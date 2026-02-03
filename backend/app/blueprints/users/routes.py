@@ -38,7 +38,9 @@ def sync_user():
     if not user_doc.exists:
         # New User
         user_data['createdAt'] = firestore.SERVER_TIMESTAMP
-        user_data['role'] = 'participant' # Default role
+        user_data['role'] = 'attendee' # Default role
+        user_data['isVerified'] = False # Host verification
+        user_data['isVenueVerified'] = False # Venue verification
         user_data['city'] = data.get('city', '')
         user_data['hobbies'] = data.get('hobbies', [])
         user_doc_ref.set(user_data)

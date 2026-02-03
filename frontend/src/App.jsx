@@ -16,6 +16,7 @@ import VenuesPage from './pages/VenuesPage';
 import CreateVenuePage from './pages/CreateVenuePage';
 import VenueDetailsPage from './pages/VenueDetailsPage';
 import EventsPage from './pages/EventsPage';
+import ProtectedRoute from './components/ProtectedRoute';
 
 // Define the router
 const router = createBrowserRouter(
@@ -24,8 +25,13 @@ const router = createBrowserRouter(
       <Route index element={<HomePage />} />
       <Route path="events" element={<EventsPage />} />
       <Route path="login" element={<LoginPage />} />
-      <Route path="events/new" element={<CreateEventPage />} />
-      <Route path="events/:id/edit" element={<CreateEventPage />} />
+
+      {/* Host Protected Routes */}
+      <Route element={<ProtectedRoute verifiedType="host" />}>
+        <Route path="events/new" element={<CreateEventPage />} />
+        <Route path="events/:id/edit" element={<CreateEventPage />} />
+      </Route>
+
       <Route path="events/:id" element={<EventDetailsPage />} />
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="profile" element={<ProfilePage />} />
@@ -35,8 +41,13 @@ const router = createBrowserRouter(
       <Route path="venue-verification" element={<VenueVerificationPage />} />
       <Route path="admin" element={<AdminPage />} />
       <Route path="venues" element={<VenuesPage />} />
-      <Route path="venues/new" element={<CreateVenuePage />} />
-      <Route path="venues/:id/edit" element={<CreateVenuePage />} />
+
+      {/* Venue Owner Protected Routes */}
+      <Route element={<ProtectedRoute verifiedType="venue" />}>
+        <Route path="venues/new" element={<CreateVenuePage />} />
+        <Route path="venues/:id/edit" element={<CreateVenuePage />} />
+      </Route>
+
       <Route path="venues/:id" element={<VenueDetailsPage />} />
     </Route>
   )
