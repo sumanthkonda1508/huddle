@@ -16,8 +16,11 @@ const CATEGORIES = [
     { id: 'arts', name: 'Arts', icon: Star },
 ];
 
+import { useAuth } from '../context/AuthContext'; // Import useAuth
+
 export default function HomePage() {
     const navigate = useNavigate();
+    const { userProfile } = useAuth(); // Access user profile
     const [events, setEvents] = useState([]);
     const [featuredVenues, setFeaturedVenues] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -28,17 +31,26 @@ export default function HomePage() {
     const [location, setLocation] = useState('');
     const [category, setCategory] = useState('');
 
+    const canViewVenues = userProfile?.isVerified || userProfile?.isVenueVerified; // Check permissions
+
+    useEffect(() => {
+        // Force 'events' mode if user cannot view venues
+        if (!canViewVenues && searchMode === 'venues') {
+            setSearchMode('events');
+        }
+    }, [canViewVenues, searchMode]);
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
                 // Fetch Events
-                const eventsRes = await api.getEvents(); // Get all for now, or add "featured" param later
-                setEvents(eventsRes.data.slice(0, 6)); // Top 6 events
+                const eventsRes = await api.getEvents();
+                setEvents(eventsRes.data.slice(0, 6));
 
-                // Fetch Venues
+                // Fetch Venues (only if needed or public? API is public but UI is restricted)
                 const venuesRes = await api.getVenues();
-                setFeaturedVenues(venuesRes.data.slice(0, 3)); // Top 3 venues
+                setFeaturedVenues(venuesRes.data.slice(0, 3));
             } catch (err) {
                 console.error("Failed to fetch home data", err);
             } finally {
@@ -51,15 +63,7 @@ export default function HomePage() {
 
     const handleSearch = () => {
         if (searchMode === 'events') {
-            navigate(`/events?q=${searchTerm}&city=${location}&category=${category}`); // Assuming /events handles params or just redirect mainly
-            // Since we don't have a dedicated /events search page fully set up with params in standard routes yet (usually it's on Home or separate),
-            // For now, let's keep simple redirection or filter on Home. 
-            // Actually, the original Home had filters on it. 
-            // Let's navigate to the respective list pages with state or params.
-            // For this implementation, I'll redirect to the list page with query params.
-            // Note: Current App.jsx has route "/" for HomePage and "/venues" for VenuesPage. 
-            // I'll assume standard query param handling or just redirect to the list page.
-            navigate('/?q=' + searchTerm); // Re-using home for event search for now
+            navigate(`/?q=${searchTerm}`);
         } else {
             navigate(`/venues?q=${searchTerm}&city=${location}`);
         }
@@ -88,25 +92,29 @@ export default function HomePage() {
                     <h1 className="hero-title-v2">Discover Your Next <span style={{ color: 'var(--primary)' }}>Adventure</span></h1>
                     <p className="hero-subtitle-v2">
                         Join thousands of others in finding hobbies, events, and communities near you.
-                        Or find the perfect space to host your own.
+                        {canViewVenues
+                            ? " Or find the perfect space to host your own."
+                            : " Start your journey today."}
                     </p>
 
                     {/* Unified Search */}
                     <div className="search-wrapper">
-                        <div className="search-tabs">
-                            <button
-                                className={`search-tab ${searchMode === 'events' ? 'active' : ''}`}
-                                onClick={() => setSearchMode('events')}
-                            >
-                                Events
-                            </button>
-                            <button
-                                className={`search-tab ${searchMode === 'venues' ? 'active' : ''}`}
-                                onClick={() => setSearchMode('venues')}
-                            >
-                                Venues
-                            </button>
-                        </div>
+                        {canViewVenues && (
+                            <div className="search-tabs">
+                                <button
+                                    className={`search-tab ${searchMode === 'events' ? 'active' : ''}`}
+                                    onClick={() => setSearchMode('events')}
+                                >
+                                    Events
+                                </button>
+                                <button
+                                    className={`search-tab ${searchMode === 'venues' ? 'active' : ''}`}
+                                    onClick={() => setSearchMode('venues')}
+                                >
+                                    Venues
+                                </button>
+                            </div>
+                        )}
 
                         <div className="glass-search-container">
                             <div className="glass-input-group">

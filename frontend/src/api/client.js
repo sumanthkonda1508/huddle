@@ -44,6 +44,9 @@ export const api = {
     getPendingUsers: () => client.get('/users/pending'),
     getPendingVenues: () => client.get('/users/pending_venues'),
     getApprovedUsers: () => client.get('/users/approved'),
+    getApprovedVenues: () => client.get('/users/approved_venues'),
+    getRejectedUsers: () => client.get('/users/rejected'),
+    getRejectedVenues: () => client.get('/users/rejected_venues'),
 
     // Comments
     getComments: (eventId) => client.get(`/events/${eventId}/comments`),

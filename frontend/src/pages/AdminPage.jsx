@@ -5,29 +5,44 @@ import { useDialog } from '../context/DialogContext';
 import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 
 export default function AdminPage() {
+    const [activeTab, setActiveTab] = useState('host'); // 'host' or 'venue'
+    const [subTab, setSubTab] = useState('pending'); // 'pending', 'approved', 'rejected'
+
     const [pendingUsers, setPendingUsers] = useState([]);
-    const [pendingVenues, setPendingVenues] = useState([]);
     const [approvedUsers, setApprovedUsers] = useState([]);
+    const [rejectedUsers, setRejectedUsers] = useState([]);
+
+    const [pendingVenues, setPendingVenues] = useState([]);
+    const [approvedVenues, setApprovedVenues] = useState([]);
+    const [rejectedVenues, setRejectedVenues] = useState([]);
+
     const navigate = useNavigate();
     const { showDialog } = useDialog();
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [pendingRes, pendingVenuesRes, approvedRes] = await Promise.all([
-                    api.getPendingUsers(),
-                    api.getPendingVenues(),
-                    api.getApprovedUsers()
-                ]);
-                setPendingUsers(pendingRes.data);
-                setPendingVenues(pendingVenuesRes.data);
-                setApprovedUsers(approvedRes.data);
-            } catch (err) {
-                console.error("Failed to fetch users", err);
-            }
-        };
         fetchData();
     }, []);
+
+    const fetchData = async () => {
+        try {
+            const [
+                pendingRes, approvedRes, rejectedRes,
+                pendingVenuesRes, approvedVenuesRes, rejectedVenuesRes
+            ] = await Promise.all([
+                api.getPendingUsers(), api.getApprovedUsers(), api.getRejectedUsers(),
+                api.getPendingVenues(), api.getApprovedVenues(), api.getRejectedVenues()
+            ]);
+            setPendingUsers(pendingRes.data);
+            setApprovedUsers(approvedRes.data);
+            setRejectedUsers(rejectedRes.data);
+
+            setPendingVenues(pendingVenuesRes.data);
+            setApprovedVenues(approvedVenuesRes.data);
+            setRejectedVenues(rejectedVenuesRes.data);
+        } catch (err) {
+            console.error("Failed to fetch users", err);
+        }
+    };
 
     const handleApprove = async (uid, type) => {
         try {
@@ -37,11 +52,7 @@ export default function AdminPage() {
                 message: `${type === 'venue' ? 'Venue' : 'Host'} request approved!`,
                 type: 'success'
             });
-            if (type === 'venue') {
-                setPendingVenues(prev => prev.filter(u => u.uid !== uid));
-            } else {
-                setPendingUsers(prev => prev.filter(u => u.uid !== uid));
-            }
+            fetchData(); // Refresh all lists
         } catch (err) {
             console.error(err);
             showDialog({ title: 'Error', message: 'Failed to approve', type: 'error' });
@@ -51,17 +62,96 @@ export default function AdminPage() {
     const handleReject = async (uid, type) => {
         try {
             await api.rejectHost(uid, type);
-            showDialog({ title: 'Rejected', message: 'Request rejected.', type: 'info' });
-            if (type === 'venue') {
-                setPendingVenues(prev => prev.filter(u => u.uid !== uid));
-            } else {
-                setPendingUsers(prev => prev.filter(u => u.uid !== uid));
-            }
+            showDialog({ title: 'Rejected', message: 'Request rejected/revoked.', type: 'info' });
+            fetchData(); // Refresh all lists
         } catch (err) {
             console.error(err);
             showDialog({ title: 'Error', message: 'Failed to reject', type: 'error' });
         }
     }
+
+    const getActiveList = () => {
+        if (activeTab === 'host') {
+            if (subTab === 'pending') return pendingUsers;
+            if (subTab === 'approved') return approvedUsers;
+            if (subTab === 'rejected') return rejectedUsers;
+        } else {
+            if (subTab === 'pending') return pendingVenues;
+            if (subTab === 'approved') return approvedVenues;
+            if (subTab === 'rejected') return rejectedVenues;
+        }
+        return [];
+    };
+
+    const renderTable = (users) => {
+        if (users.length === 0) {
+            return (
+                <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-secondary)' }}>
+                    <p>No {subTab} {activeTab} requests found.</p>
+                </div>
+            );
+        }
+        return (
+            <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
+                        <tr>
+                            <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>User</th>
+                            <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Email</th>
+                            <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Status</th>
+                            {subTab === 'pending' && <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Document</th>}
+                            <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {users.map(user => (
+                            <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '1rem' }}>
+                                    <div style={{ fontWeight: '500' }}>{user.displayName || 'Unnamed'}</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>UID: {user.uid.substring(0, 8)}...</div>
+                                </td>
+                                <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{user.email}</td>
+                                <td style={{ padding: '1rem' }}>
+                                    <span style={{
+                                        padding: '0.2rem 0.6rem', borderRadius: '1rem', fontSize: '0.8rem', fontWeight: '500',
+                                        background: subTab === 'approved' ? '#DCFCE7' : subTab === 'rejected' ? '#FEE2E2' : '#FEF3C7',
+                                        color: subTab === 'approved' ? '#166534' : subTab === 'rejected' ? '#991B1B' : '#92400E'
+                                    }}>
+                                        {subTab.charAt(0).toUpperCase() + subTab.slice(1)}
+                                    </span>
+                                </td>
+                                {subTab === 'pending' && (
+                                    <td style={{ padding: '1rem' }}>
+                                        <a
+                                            href={(activeTab === 'host' ? user.verificationDocument : user.venueVerificationDocument)}
+                                            target="_blank" rel="noopener noreferrer"
+                                            style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                        >
+                                            View Doc <ExternalLink size={14} />
+                                        </a>
+                                    </td>
+                                )}
+                                <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                    {subTab === 'pending' && (
+                                        <>
+                                            <button onClick={() => handleReject(user.uid, activeTab)} className="btn" style={{ padding: '0.4rem 0.8rem', background: '#EF4444', marginRight: '0.5rem', fontSize: '0.9rem' }}>Reject</button>
+                                            <button onClick={() => handleApprove(user.uid, activeTab)} className="btn" style={{ padding: '0.4rem 0.8rem', background: '#10B981', fontSize: '0.9rem' }}>Approve</button>
+                                        </>
+                                    )}
+                                    {subTab === 'approved' && (
+                                        <button onClick={() => handleReject(user.uid, activeTab)} className="btn" style={{ padding: '0.4rem 0.8rem', background: '#EF4444', fontSize: '0.9rem' }}>Revoke / Reject</button>
+                                    )}
+                                    {subTab === 'rejected' && (
+                                        <button onClick={() => handleApprove(user.uid, activeTab)} className="btn" style={{ padding: '0.4rem 0.8rem', background: '#10B981', fontSize: '0.9rem' }}>Re-Approve</button>
+                                    )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
     return (
         <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
@@ -70,167 +160,64 @@ export default function AdminPage() {
                     <button
                         onClick={() => navigate('/')}
                         style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: '1rem',
-                            color: 'var(--text-secondary)',
-                            marginBottom: '1rem',
-                            padding: 0,
+                            background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem',
+                            color: 'var(--text-secondary)', marginBottom: '1rem', padding: 0,
                             display: 'flex', alignItems: 'center', gap: '0.5rem'
                         }}
                     >
                         <ArrowLeft size={20} /> Back to Home
                     </button>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div>
-                            <h1 style={{ marginBottom: '0.5rem' }}>Admin Dashboard</h1>
-                            <p style={{ color: 'var(--text-secondary)' }}>Manage user verifications and community safety.</p>
-                        </div>
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>{pendingUsers.length}</span>
-                                <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>Host Pending</span>
-                            </div>
-                            <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>{pendingVenues.length}</span>
-                                <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>Venue Pending</span>
-                            </div>
-                        </div>
+                    <div>
+                        <h1 style={{ marginBottom: '0.5rem' }}>Admin Dashboard</h1>
+                        <p style={{ color: 'var(--text-secondary)' }}>Manage user verifications and community safety.</p>
                     </div>
                 </div>
             </div>
 
             <div className="container" style={{ paddingBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
-                {/* Host Verification Section */}
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                        <h3 style={{ margin: 0 }}>Host Verification Requests</h3>
-                    </div>
-                    {pendingUsers.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No pending host requests.</div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
-                                    <tr>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>User</th>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Document</th>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pendingUsers.map(user => (
-                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '1rem' }}>{user.displayName} <br /><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.email}</span></td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <a href={user.verificationDocument} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    View ID <ExternalLink size={14} />
-                                                </a>
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                <button onClick={() => handleReject(user.uid, 'host')} className="btn" style={{ padding: '0.5rem', background: '#EF4444', marginRight: '0.5rem' }}>Reject</button>
-                                                <button onClick={() => handleApprove(user.uid, 'host')} className="btn" style={{ padding: '0.5rem', background: '#10B981' }}>Approve</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                {/* Main Tabs */}
+                <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                    <button
+                        onClick={() => setActiveTab('host')}
+                        className={activeTab === 'host' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ padding: '0.5rem 1.5rem' }}
+                    >
+                        Host Verification
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('venue')}
+                        className={activeTab === 'venue' ? 'btn-primary' : 'btn-secondary'}
+                        style={{ padding: '0.5rem 1.5rem' }}
+                    >
+                        Venue Verification
+                    </button>
                 </div>
 
-                {/* Venue Verification Section */}
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
-                        <h3 style={{ margin: 0 }}>Venue Verification Requests</h3>
-                    </div>
-                    {pendingVenues.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No pending venue requests.</div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
-                                    <tr>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>User</th>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Document</th>
-                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pendingVenues.map(user => (
-                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                            <td style={{ padding: '1rem' }}>{user.displayName} <br /><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.email}</span></td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <a href={user.venueVerificationDocument} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                                    View Document <ExternalLink size={14} />
-                                                </a>
-                                            </td>
-                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
-                                                <button onClick={() => handleReject(user.uid, 'venue')} className="btn" style={{ padding: '0.5rem', background: '#EF4444', marginRight: '0.5rem' }}>Reject Venue</button>
-                                                <button onClick={() => handleApprove(user.uid, 'venue')} className="btn" style={{ padding: '0.5rem', background: '#10B981' }}>Approve Venue</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-
-                {/* Approved Users Section */}
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0 }}>Verified Hosts</h3>
-                        <span style={{ background: '#DCFCE7', color: '#166534', padding: '0.2rem 0.8rem', borderRadius: '1rem', fontSize: '0.85rem', fontWeight: '500' }}>
-                            {approvedUsers.length} Total
-                        </span>
+                    <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', background: '#F8FAFC', display: 'flex', gap: '0.5rem' }}>
+                        {['pending', 'approved', 'rejected'].map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setSubTab(tab)}
+                                style={{
+                                    padding: '0.5rem 1rem',
+                                    border: 'none',
+                                    background: subTab === tab ? 'white' : 'transparent',
+                                    borderRadius: 'var(--radius)',
+                                    boxShadow: subTab === tab ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                                    color: subTab === tab ? 'var(--primary)' : 'var(--text-secondary)',
+                                    fontWeight: subTab === tab ? '600' : '400',
+                                    cursor: 'pointer',
+                                    textTransform: 'capitalize'
+                                }}
+                            >
+                                {tab}
+                            </button>
+                        ))}
                     </div>
 
-                    {approvedUsers.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-secondary)' }}>
-                            <p>No verified hosts yet.</p>
-                        </div>
-                    ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                                <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
-                                    <tr>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>User</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Email</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>City</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'right' }}>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {approvedUsers.map(user => (
-                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '1rem 1.5rem' }}>
-                                                <div style={{ fontWeight: '500' }}>{user.displayName || 'Unnamed User'}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>UID: {user.uid.substring(0, 8)}...</div>
-                                            </td>
-                                            <td style={{ padding: '1rem 1.5rem', color: 'var(--text-secondary)' }}>
-                                                {user.email}
-                                            </td>
-                                            <td style={{ padding: '1rem 1.5rem' }}>
-                                                {user.city || '-'}
-                                            </td>
-                                            <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                                                <span style={{
-                                                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-                                                    padding: '0.25rem 0.75rem', borderRadius: '1rem',
-                                                    background: '#DCFCE7', color: '#166534', fontSize: '0.85rem', fontWeight: '500'
-                                                }}>
-                                                    <Check size={14} /> Verified
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    {renderTable(getActiveList())}
                 </div>
 
                 <p style={{ marginTop: '2rem', fontSize: '0.8rem', color: 'var(--text-secondary)', textAlign: 'center' }}>

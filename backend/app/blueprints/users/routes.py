@@ -286,6 +286,57 @@ def get_approved_users():
     # For now, let's keep approved list as just 'verified hosts' to avoid UI clutter, or we need a new approved tab.
     return jsonify(users), 200
 
+@users_bp.route('/approved_venues', methods=['GET'])
+@login_required
+def get_approved_venues():
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
+    docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'approved')).stream()
+    users = []
+    for doc in docs:
+        d = doc.to_dict()
+        d['uid'] = doc.id
+        users.append(format_doc(d))
+    return jsonify(users), 200
+
+@users_bp.route('/rejected', methods=['GET'])
+@login_required
+def get_rejected_users():
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
+    docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'rejected')).stream()
+    users = []
+    for doc in docs:
+        d = doc.to_dict()
+        d['uid'] = doc.id
+        users.append(format_doc(d))
+    return jsonify(users), 200
+
+@users_bp.route('/rejected_venues', methods=['GET'])
+@login_required
+def get_rejected_venues():
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
+    docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'rejected')).stream()
+    users = []
+    for doc in docs:
+        d = doc.to_dict()
+        d['uid'] = doc.id
+        users.append(format_doc(d))
+    return jsonify(users), 200
+
 @users_bp.route('/me/wishlist', methods=['GET'])
 @login_required
 def get_wishlist():
