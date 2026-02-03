@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ExternalLink } from 'lucide-react';
 
 export default function AdminPage() {
     const [pendingUsers, setPendingUsers] = useState([]);
+    const [pendingVenues, setPendingVenues] = useState([]);
     const [approvedUsers, setApprovedUsers] = useState([]);
     const navigate = useNavigate();
     const { showDialog } = useDialog();
@@ -13,11 +14,13 @@ export default function AdminPage() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [pendingRes, approvedRes] = await Promise.all([
+                const [pendingRes, pendingVenuesRes, approvedRes] = await Promise.all([
                     api.getPendingUsers(),
+                    api.getPendingVenues(),
                     api.getApprovedUsers()
                 ]);
                 setPendingUsers(pendingRes.data);
+                setPendingVenues(pendingVenuesRes.data);
                 setApprovedUsers(approvedRes.data);
             } catch (err) {
                 console.error("Failed to fetch users", err);
@@ -26,46 +29,37 @@ export default function AdminPage() {
         fetchData();
     }, []);
 
-    const handleApprove = async (uid) => {
+    const handleApprove = async (uid, type) => {
         try {
-            await api.approveHost(uid);
+            await api.approveHost(uid, type);
             showDialog({
                 title: 'Success',
-                message: 'User approved!',
+                message: `${type === 'venue' ? 'Venue' : 'Host'} request approved!`,
                 type: 'success'
             });
-            setPendingUsers(prev => prev.filter(u => u.uid !== uid));
-            // Re-fetch approved users to update the list or manually add
-            const approvedUser = pendingUsers.find(u => u.uid === uid);
-            if (approvedUser) {
-                setApprovedUsers(prev => [...prev, { ...approvedUser, isVerified: true, verificationStatus: 'approved' }]);
+            if (type === 'venue') {
+                setPendingVenues(prev => prev.filter(u => u.uid !== uid));
+            } else {
+                setPendingUsers(prev => prev.filter(u => u.uid !== uid));
             }
         } catch (err) {
             console.error(err);
-            showDialog({
-                title: 'Error',
-                message: 'Failed to approve',
-                type: 'error'
-            });
+            showDialog({ title: 'Error', message: 'Failed to approve', type: 'error' });
         }
     }
 
-    const handleReject = async (uid) => {
+    const handleReject = async (uid, type) => {
         try {
-            await api.rejectHost(uid);
-            showDialog({
-                title: 'Rejected',
-                message: 'User request rejected.',
-                type: 'info'
-            });
-            setPendingUsers(prev => prev.filter(u => u.uid !== uid));
+            await api.rejectHost(uid, type);
+            showDialog({ title: 'Rejected', message: 'Request rejected.', type: 'info' });
+            if (type === 'venue') {
+                setPendingVenues(prev => prev.filter(u => u.uid !== uid));
+            } else {
+                setPendingUsers(prev => prev.filter(u => u.uid !== uid));
+            }
         } catch (err) {
             console.error(err);
-            showDialog({
-                title: 'Error',
-                message: 'Failed to reject',
-                type: 'error'
-            });
+            showDialog({ title: 'Error', message: 'Failed to reject', type: 'error' });
         }
     }
 
@@ -93,88 +87,89 @@ export default function AdminPage() {
                             <h1 style={{ marginBottom: '0.5rem' }}>Admin Dashboard</h1>
                             <p style={{ color: 'var(--text-secondary)' }}>Manage user verifications and community safety.</p>
                         </div>
-                        <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                            <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>{pendingUsers.length}</span>
-                            <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>Pending</span>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                            <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>{pendingUsers.length}</span>
+                                <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>Host Pending</span>
+                            </div>
+                            <div style={{ background: 'white', padding: '0.5rem 1rem', borderRadius: 'var(--radius)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--primary)' }}>{pendingVenues.length}</span>
+                                <span style={{ marginLeft: '0.5rem', color: 'var(--text-secondary)' }}>Venue Pending</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="container" style={{ paddingBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0 }}>Verification Requests</h3>
-                    </div>
 
+                {/* Host Verification Section */}
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                        <h3 style={{ margin: 0 }}>Host Verification Requests</h3>
+                    </div>
                     {pendingUsers.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-secondary)' }}>
-                            <div style={{ marginBottom: '1rem', color: '#10B981', display: 'flex', justifyContent: 'center' }}><Check size={48} /></div>
-                            <h3 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All caught up!</h3>
-                            <p>There are no pending verification requests.</p>
-                        </div>
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No pending host requests.</div>
                     ) : (
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                                 <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
                                     <tr>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>User</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Email</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Document</th>
-                                        <th style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'right' }}>Actions</th>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>User</th>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Document</th>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {pendingUsers.map(user => (
-                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }}>
-                                            <td style={{ padding: '1rem 1.5rem' }}>
-                                                <div style={{ fontWeight: '500' }}>{user.displayName || 'Unnamed User'}</div>
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>UID: {user.uid.substring(0, 8)}...</div>
-                                            </td>
-                                            <td style={{ padding: '1rem 1.5rem', color: 'var(--text-secondary)' }}>
-                                                {user.email}
-                                            </td>
-                                            <td style={{ padding: '1rem 1.5rem' }}>
-                                                <a
-                                                    href={user.verificationDocument}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    style={{
-                                                        color: 'var(--primary)',
-                                                        textDecoration: 'none',
-                                                        fontWeight: '500',
-                                                        display: 'inline-flex', alignItems: 'center', gap: '0.25rem'
-                                                    }}
-                                                >
+                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '1rem' }}>{user.displayName} <br /><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.email}</span></td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <a href={user.verificationDocument} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                                                     View ID <ExternalLink size={14} />
                                                 </a>
                                             </td>
-                                            <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                                                <button
-                                                    onClick={() => handleReject(user.uid)}
-                                                    className="btn"
-                                                    style={{
-                                                        padding: '0.5rem 1rem',
-                                                        fontSize: '0.9rem',
-                                                        background: '#EF4444', // Red
-                                                        boxShadow: 'none',
-                                                        marginRight: '0.5rem'
-                                                    }}
-                                                >
-                                                    Reject
-                                                </button>
-                                                <button
-                                                    onClick={() => handleApprove(user.uid)}
-                                                    className="btn"
-                                                    style={{
-                                                        padding: '0.5rem 1rem',
-                                                        fontSize: '0.9rem',
-                                                        background: '#10B981',
-                                                        boxShadow: 'none'
-                                                    }}
-                                                >
-                                                    Approve
-                                                </button>
+                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                <button onClick={() => handleReject(user.uid, 'host')} className="btn" style={{ padding: '0.5rem', background: '#EF4444', marginRight: '0.5rem' }}>Reject</button>
+                                                <button onClick={() => handleApprove(user.uid, 'host')} className="btn" style={{ padding: '0.5rem', background: '#10B981' }}>Approve</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Venue Verification Section */}
+                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)' }}>
+                        <h3 style={{ margin: 0 }}>Venue Verification Requests</h3>
+                    </div>
+                    {pendingVenues.length === 0 ? (
+                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>No pending venue requests.</div>
+                    ) : (
+                        <div style={{ overflowX: 'auto' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                                <thead style={{ background: '#F8FAFC', borderBottom: '1px solid var(--border-color)' }}>
+                                    <tr>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>User</th>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Document</th>
+                                        <th style={{ padding: '1rem', fontWeight: '500', color: 'var(--text-secondary)', textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {pendingVenues.map(user => (
+                                        <tr key={user.uid} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                            <td style={{ padding: '1rem' }}>{user.displayName} <br /><span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user.email}</span></td>
+                                            <td style={{ padding: '1rem' }}>
+                                                <a href={user.venueVerificationDocument} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                                    View Document <ExternalLink size={14} />
+                                                </a>
+                                            </td>
+                                            <td style={{ padding: '1rem', textAlign: 'right' }}>
+                                                <button onClick={() => handleReject(user.uid, 'venue')} className="btn" style={{ padding: '0.5rem', background: '#EF4444', marginRight: '0.5rem' }}>Reject Venue</button>
+                                                <button onClick={() => handleApprove(user.uid, 'venue')} className="btn" style={{ padding: '0.5rem', background: '#10B981' }}>Approve Venue</button>
                                             </td>
                                         </tr>
                                     ))}
@@ -187,7 +182,7 @@ export default function AdminPage() {
                 {/* Approved Users Section */}
                 <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
                     <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ margin: 0 }}>Approved Verified Hosts</h3>
+                        <h3 style={{ margin: 0 }}>Verified Hosts</h3>
                         <span style={{ background: '#DCFCE7', color: '#166534', padding: '0.2rem 0.8rem', borderRadius: '1rem', fontSize: '0.85rem', fontWeight: '500' }}>
                             {approvedUsers.length} Total
                         </span>
@@ -195,7 +190,7 @@ export default function AdminPage() {
 
                     {approvedUsers.length === 0 ? (
                         <div style={{ textAlign: 'center', padding: '3rem 2rem', color: 'var(--text-secondary)' }}>
-                            <p>No approved users yet.</p>
+                            <p>No verified hosts yet.</p>
                         </div>
                     ) : (
                         <div style={{ overflowX: 'auto' }}>

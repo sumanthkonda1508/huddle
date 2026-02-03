@@ -38,10 +38,11 @@ export const api = {
     leaveEvent: (id) => client.post(`/events/${id}/leave`),
     syncUser: (data) => client.post('/users/sync', data),
     subscribe: (data) => client.post('/users/me/subscribe', data),
-    requestVerification: (url) => client.post('/users/me/verify_request', { documentUrl: url }),
-    approveHost: (uid) => client.post(`/users/${uid}/approve`),
-    rejectHost: (uid) => client.post(`/users/${uid}/reject`),
+    requestVerification: (url, type = 'host') => client.post('/users/me/verify_request', { documentUrl: url, type }),
+    approveHost: (uid, type = 'host') => client.post(`/users/${uid}/approve`, { type }),
+    rejectHost: (uid, type = 'host') => client.post(`/users/${uid}/reject`, { type }),
     getPendingUsers: () => client.get('/users/pending'),
+    getPendingVenues: () => client.get('/users/pending_venues'),
     getApprovedUsers: () => client.get('/users/approved'),
 
     // Comments

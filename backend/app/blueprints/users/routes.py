@@ -150,17 +150,25 @@ def request_verification():
     uid = g.user['uid']
     data = request.get_json()
     doc_url = data.get('documentUrl')
+    ver_type = data.get('type', 'host') # 'host' or 'venue'
     
     if not doc_url:
         return jsonify({'error': 'Document URL required'}), 400
         
-    users_ref.document(uid).set({
-        'verificationStatus': 'pending',
-        'verificationDocument': doc_url,
+    update_data = {
         'updatedAt': firestore.SERVER_TIMESTAMP
-    }, merge=True)
+    }
+
+    if ver_type == 'venue':
+        update_data['venueVerificationStatus'] = 'pending'
+        update_data['venueVerificationDocument'] = doc_url
+    else:
+        update_data['verificationStatus'] = 'pending'
+        update_data['verificationDocument'] = doc_url
+
+    users_ref.document(uid).set(update_data, merge=True)
     
-    return jsonify({'message': 'Verification requested'}), 200
+    return jsonify({'message': f'{ver_type.capitalize()} verification requested'}), 200
 
 @users_bp.route('/<uid>/approve', methods=['POST'])
 @login_required
@@ -171,15 +179,26 @@ def approve_host(uid):
     if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
         return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
-    users_ref.document(uid).set({
-        'isVerified': True,
-        'verificationStatus': 'approved',
-        'updatedAt': firestore.SERVER_TIMESTAMP
-    }, merge=True)
+    data = request.get_json() or {}
+    ver_type = data.get('type', 'host')
 
+    update_data = {
+        'updatedAt': firestore.SERVER_TIMESTAMP
+    }
+
+    if ver_type == 'venue':
+        update_data['isVenueVerified'] = True
+        update_data['venueVerificationStatus'] = 'approved'
+        notification_msg = 'Your request to verify as a venue owner has been approved.'
+    else:
+        update_data['isVerified'] = True
+        update_data['verificationStatus'] = 'approved'
+        notification_msg = 'Your account has been verified as a host.'
+
+    users_ref.document(uid).set(update_data, merge=True)
     
-    create_notification(uid, 'Verification Approved', 'Your account has been verified as a host.', 'system')
-    return jsonify({'message': 'User verified'}), 200
+    create_notification(uid, 'Verification Approved', notification_msg, 'system')
+    return jsonify({'message': f'User {ver_type} verification approved'}), 200
 
 @users_bp.route('/<uid>/reject', methods=['POST'])
 @login_required
@@ -190,15 +209,26 @@ def reject_host(uid):
     if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
         return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
-    users_ref.document(uid).set({
-        'isVerified': False,
-        'verificationStatus': 'rejected',
-        'updatedAt': firestore.SERVER_TIMESTAMP
-    }, merge=True)
+    data = request.get_json() or {}
+    ver_type = data.get('type', 'host')
 
+    update_data = {
+        'updatedAt': firestore.SERVER_TIMESTAMP
+    }
+
+    if ver_type == 'venue':
+        update_data['isVenueVerified'] = False
+        update_data['venueVerificationStatus'] = 'rejected'
+        notification_msg = 'Your request to verify as a venue owner has been rejected. Please update your documents and try again.'
+    else:
+        update_data['isVerified'] = False
+        update_data['verificationStatus'] = 'rejected'
+        notification_msg = 'Your request to become a host has been rejected. Please update your documents and try again.'
+
+    users_ref.document(uid).set(update_data, merge=True)
     
-    create_notification(uid, 'Verification Rejected', 'Your request to become a host has been rejected. Please update your documents and try again.', 'system')
-    return jsonify({'message': 'User verification rejected'}), 200
+    create_notification(uid, 'Verification Rejected', notification_msg, 'system')
+    return jsonify({'message': f'User {ver_type} verification rejected'}), 200
 
 @users_bp.route('/pending', methods=['GET'])
 @login_required
@@ -210,6 +240,23 @@ def get_pending_users():
         return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'pending')).stream()
+    users = []
+    for doc in docs:
+        d = doc.to_dict()
+        d['uid'] = doc.id
+        users.append(format_doc(d))
+    return jsonify(users), 200
+
+@users_bp.route('/pending_venues', methods=['GET'])
+@login_required
+def get_pending_venues():
+    # Check Admin Role
+    requester_uid = g.user['uid']
+    requester_doc = users_ref.document(requester_uid).get()
+    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
+        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
+
+    docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'pending')).stream()
     users = []
     for doc in docs:
         d = doc.to_dict()
@@ -232,6 +279,9 @@ def get_approved_users():
         d = doc.to_dict()
         d['uid'] = doc.id
         users.append(format_doc(d))
+    
+    # Also fetch approved venues? Maybe separates lists is better, or merge.
+    # For now, let's keep approved list as just 'verified hosts' to avoid UI clutter, or we need a new approved tab.
     return jsonify(users), 200
 
 @users_bp.route('/me/wishlist', methods=['GET'])

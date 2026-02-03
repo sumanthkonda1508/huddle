@@ -32,6 +32,28 @@ export default function CreateVenuePage() {
     });
 
     useEffect(() => {
+        const checkVerification = async () => {
+            if (!userProfile) return;
+
+            // Allow editing existing venues regardless of current status (optional, but usually safe)
+            if (isEditing) return;
+
+            if (userProfile.isVenueVerified) {
+                // All good
+            } else if (userProfile.venueVerificationStatus === 'pending') {
+                showDialog({
+                    title: 'Verification Pending',
+                    message: 'Your venue verification is pending approval.',
+                    type: 'alert',
+                    onConfirm: () => navigate('/dashboard')
+                });
+            } else {
+                // Not verified or rejected
+                navigate('/venue-verification');
+            }
+        };
+        checkVerification();
+
         if (isEditing) {
             setLoading(true);
             api.getVenueDetails(id)
@@ -64,7 +86,7 @@ export default function CreateVenuePage() {
                 .then(res => setVenueCount(res.data.length))
                 .catch(console.error);
         }
-    }, [id, isEditing, navigate]);
+    }, [id, isEditing, navigate, userProfile, showDialog]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;

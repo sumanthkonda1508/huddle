@@ -10,6 +10,7 @@ import ProfilePage from './pages/ProfilePage';
 import NotificationsPage from './pages/NotificationsPage';
 import PlansPage from './pages/PlansPage';
 import VerificationPage from './pages/VerificationPage';
+import VenueVerificationPage from './pages/VenueVerificationPage';
 import AdminPage from './pages/AdminPage';
 import VenuesPage from './pages/VenuesPage';
 import CreateVenuePage from './pages/CreateVenuePage';
@@ -31,6 +32,7 @@ const router = createBrowserRouter(
       <Route path="notifications" element={<NotificationsPage />} />
       <Route path="plans" element={<PlansPage />} />
       <Route path="verification" element={<VerificationPage />} />
+      <Route path="venue-verification" element={<VenueVerificationPage />} />
       <Route path="admin" element={<AdminPage />} />
       <Route path="venues" element={<VenuesPage />} />
       <Route path="venues/new" element={<CreateVenuePage />} />
