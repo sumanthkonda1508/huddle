@@ -801,11 +801,11 @@ h6 {
     display: block !important;
     background: none;
     border: none;
-    font-size: 1.5rem;
-    color: white;
-    /* Since nav-bg is dark */
     cursor: pointer;
+    font-size: 1.5rem;
+    color: var(--nav-text);
   }
+
 
   /* Mobile Sidebar Drawer */
   .mobile-sidebar {
@@ -1341,4 +1341,25 @@ h6 {
   text-transform: uppercase;
   margin-left: 0.5rem;
   vertical-align: middle;
+}
+
+/* Skeleton Loading Animation */
+@keyframes skeleton-loading {
+  0% {
+    background-color: #e2e8f0;
+  }
+
+  50% {
+    background-color: #f1f5f9;
+  }
+
+  100% {
+    background-color: #e2e8f0;
+  }
+}
+
+.skeleton {
+  animation: skeleton-loading 1.5s infinite ease-in-out;
+  background-color: #e2e8f0;
+  /* Slate-200 */
 }

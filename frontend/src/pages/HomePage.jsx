@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { Link, useNavigate } from 'react-router-dom';
+import LoadingGrid from '../components/Loading';
 import SEO from '../components/SEO';
 import { MapPin, Search, Calendar, Users, ArrowRight, Music, Heart, Briefcase, Coffee, Star } from 'lucide-react';
 import VenueCard from '../components/VenueCard'; // Assuming you have or will create this, otherwise I'll need to duplicate card logic for now or genericize it.
@@ -216,7 +217,7 @@ export default function HomePage() {
                         </div>
 
                         {loading ? (
-                            <div>Loading...</div>
+                            <LoadingGrid count={6} />
                         ) : (
                             <div className="event-grid">
                                 {events.map(event => (
@@ -260,12 +261,16 @@ export default function HomePage() {
                             <Link to="/venues" className="btn-secondary">Explore Venues <ArrowRight size={16} style={{ marginLeft: '0.5rem' }} /></Link>
                         </div>
 
-                        <div className="event-grid">
-                            {featuredVenues.length === 0 && !loading && <p>No venues found.</p>}
-                            {featuredVenues.map(venue => (
-                                <VenueCard key={venue.id} venue={venue} />
-                            ))}
-                        </div>
+                        {loading ? (
+                            <LoadingGrid count={3} />
+                        ) : (
+                            <div className="event-grid">
+                                {featuredVenues.length === 0 && <p>No venues found.</p>}
+                                {featuredVenues.map(venue => (
+                                    <VenueCard key={venue.id} venue={venue} />
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
