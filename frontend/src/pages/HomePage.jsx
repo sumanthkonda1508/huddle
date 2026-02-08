@@ -98,6 +98,8 @@ export default function HomePage() {
                             : " Start your journey today."}
                     </p>
 
+
+
                     {/* Unified Search */}
                     <div className="search-wrapper">
                         {canViewVenues && (
@@ -145,14 +147,12 @@ export default function HomePage() {
                                     <div className="glass-input-group">
                                         <Calendar className="glass-icon" size={20} />
                                         <input
-                                            type="date"
+                                            type="text"
                                             className="glass-input"
                                             placeholder="Date"
+                                            onFocus={(e) => (e.target.type = "date")}
+                                            onBlur={(e) => (e.target.type = "text")}
                                             style={{ color: 'var(--text-primary)' }}
-                                        // Using type=date usually requires a valid value or empty string. 
-                                        // Placeholder often doesn't show for type=date in some browsers without tweaks, 
-                                        // but for now let's use type='text' with onFocus or just simple date input.
-                                        // Let's stick to standard type="date" and see.
                                         />
                                     </div>
                                     <div className="search-divider"></div>
@@ -199,8 +199,43 @@ export default function HomePage() {
                             </button>
                         </div>
                     </div>
+
+                    {/* Popular Searches */}
+                    {searchMode === 'events' && (
+                        <div className="popular-searches">
+                            <span>Popular:</span>
+                            <button onClick={() => { setSearchTerm('Music'); handleSearch(); }}>Music</button>
+                            <button onClick={() => { setSearchTerm('Workshop'); handleSearch(); }}>Workshops</button>
+                            <button onClick={() => { setSearchTerm('Yoga'); handleSearch(); }}>Yoga</button>
+                        </div>
+                    )}
                 </div>
             </div>
+
+
+            {/* Browse by Category Section */}
+            <section className="categories-section">
+                <div className="container">
+                    <h2 className="section-title-center">Browse by Category</h2>
+                    <div className="categories-grid">
+                        {CATEGORIES.map(cat => (
+                            <div
+                                key={cat.id}
+                                className="category-card"
+                                onClick={() => {
+                                    setCategory(cat.name);
+                                    navigate(`/events?category=${cat.name}`);
+                                }}
+                            >
+                                <div className="category-icon-wrapper">
+                                    <cat.icon size={32} />
+                                </div>
+                                <h3>{cat.name}</h3>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
 
             <div className="container">
 
@@ -274,43 +309,78 @@ export default function HomePage() {
                     </div>
                 )}
 
-                {/* Testimonials / Trust - Commented out for later use
-                <div style={{
-                    background: 'var(--card-bg)',
-                    borderRadius: '24px',
-                    padding: '3rem',
-                    textAlign: 'center',
-                    border: '1px solid var(--border-color)',
-                    position: 'relative',
-                    overflow: 'hidden'
-                }}>
-                    <div style={{
-                        position: 'absolute', top: 0, left: 0, width: '100%', height: '5px',
-                        background: 'linear-gradient(90deg, var(--primary), var(--accent))'
-                    }}></div>
-
-                    <h2 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Trusted by Thousands</h2>
-                    <p style={{ color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto 2rem' }}>
-                        Whether you are looking to join a hiking group, attend a workshop, or host a corporate event, Huddle makes it easy.
-                    </p>
-
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '3rem', flexWrap: 'wrap' }}>
-                        <div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--primary)' }}>10k+</div>
-                            <div style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Events Hosted</div>
+                {/* How It Works (For Guests/New Users) */}
+                {!userProfile && (
+                    <div className="how-it-works-section">
+                        <h2 className="section-title-center">How Huddle Works</h2>
+                        <div className="steps-grid">
+                            <div className="step-card">
+                                <div className="step-number">1</div>
+                                <h3>Discover</h3>
+                                <p>Find events that match your interests or venues for your next gathering.</p>
+                            </div>
+                            <div className="step-card">
+                                <div className="step-number">2</div>
+                                <h3>Book</h3>
+                                <p>Secure your spot or reserve a venue with just a few clicks.</p>
+                            </div>
+                            <div className="step-card">
+                                <div className="step-number">3</div>
+                                <h3>Enjoy</h3>
+                                <p>Connect with people, learn new skills, and make memories.</p>
+                            </div>
                         </div>
-                        <div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--primary)' }}>500+</div>
-                            <div style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Active Venues</div>
+                    </div>
+                )}
+
+                {/* Trusted by Thousands - Social Proof
+                <div className="trusted-section">
+                    <div className="trusted-bg-overlay"></div>
+                    <div className="trusted-content">
+                        <h2 className="section-title-light">Trusted by Thousands</h2>
+                        <p className="trusted-subtitle">
+                            Whether you are looking to join a hiking group, attend a workshop, or host a corporate event, Huddle makes it easy.
+                        </p>
+
+                        <div className="stats-grid">
+                            <div className="stat-item">
+                                <div className="stat-number">10k+</div>
+                                <div className="stat-label">Events Hosted</div>
+                            </div>
+                            <div className="stat-item">
+                                <div className="stat-number">500+</div>
+                                <div className="stat-label">Active Venues</div>
+                            </div>
+                            <div className="stat-item">
+                                <div className="stat-number">50k+</div>
+                                <div className="stat-label">Happy Users</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--primary)' }}>50k+</div>
-                            <div style={{ color: 'var(--text-secondary)', fontWeight: '600' }}>Happy Users</div>
+                    </div>
+                </div>
+                */}
+
+                {/* CTA Section
+                <div className="cta-section">
+                    <div className="cta-content">
+                        <h2>Ready to host your own event?</h2>
+                        <p>Join our community of organizers and venue owners.</p>
+                        <div className="cta-buttons">
+                            {userProfile?.isVerified ? (
+                                <Link to="/events/new" className="btn btn-lg-white">Host Event</Link>
+                            ) : (
+                                <Link to="/verification" className="btn btn-lg-white">Become a Host</Link>
+                            )}
+                            {userProfile?.isVenueVerified ? (
+                                <Link to="/venues/new" className="btn btn-outline-white">List Venue</Link>
+                            ) : (
+                                <Link to="/venue-verification" className="btn btn-outline-white">List Venue</Link>
+                            )}
                         </div>
                     </div>
                 </div>
                 */}
             </div>
-        </div>
+        </div >
     );
 }

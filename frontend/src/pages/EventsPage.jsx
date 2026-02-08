@@ -36,12 +36,16 @@ export default function EventsPage() {
         const params = new URLSearchParams(locationHook.search);
         const q = params.get('q');
         const city = params.get('city');
-        // const category = params.get('category'); // If passed
+        const category = params.get('category');
 
         if (q) setSearchTerm(q);
         if (city) {
             setDraftCity(city);
             setActiveFilters(prev => ({ ...prev, city }));
+        }
+        if (category) {
+            setDraftCategory(category);
+            setActiveFilters(prev => ({ ...prev, category }));
         }
 
         fetchEvents();
@@ -93,8 +97,10 @@ export default function EventsPage() {
         // 2. Filters are MANUAL
         const matchesCity = activeFilters.city ? e.city === activeFilters.city : true;
 
-        // Category matching (assuming 'hobby' field represents category or strict match)
-        const matchesCategory = activeFilters.category ? e.hobby === activeFilters.category : true;
+        // Category matching (case-insensitive)
+        const matchesCategory = activeFilters.category
+            ? e.hobby && e.hobby.toLowerCase() === activeFilters.category.toLowerCase()
+            : true;
 
         // Date matching (simple match: same day)
         // e.date might be ISO string. 
