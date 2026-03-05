@@ -18,7 +18,7 @@ def create_app():
 
     # CORS Config Phase 0.7
     CORS(app, 
-         origins=["http://localhost:5173", "https://huddle-your-app.vercel.app"], # Replace with actual prod domain
+         origins=["http://localhost:5173", "https://huddle-five-omega.vercel.app"], # Replace with actual prod domain
          allow_headers=["Authorization", "Content-Type"],
          methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
 
