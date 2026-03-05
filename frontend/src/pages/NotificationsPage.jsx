@@ -6,14 +6,32 @@ import { ArrowLeft, Inbox, Calendar, Bell } from 'lucide-react';
 export default function NotificationsPage() {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(false);
+    const [lastDocId, setLastDocId] = useState(null);
+    const [loadingMore, setLoadingMore] = useState(false);
     const navigate = useNavigate();
 
-    const fetchNotifications = () => {
-        setLoading(true);
-        api.getNotifications()
-            .then(res => setNotifications(res.data))
+    const fetchNotifications = (isLoadMore = false) => {
+        if (!isLoadMore) setLoading(true);
+        else setLoadingMore(true);
+
+        const currentLastId = isLoadMore ? lastDocId : null;
+
+        api.getNotifications(currentLastId)
+            .then(res => {
+                if (isLoadMore) {
+                    setNotifications(prev => [...prev, ...res.data.data]);
+                } else {
+                    setNotifications(res.data.data);
+                }
+                setHasMore(res.data.hasMore);
+                setLastDocId(res.data.lastDocId);
+            })
             .catch(err => console.error(err))
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                setLoadingMore(false);
+            });
     };
 
     useEffect(() => {
@@ -140,6 +158,18 @@ export default function NotificationsPage() {
                                 )}
                             </div>
                         ))}
+                    </div>
+                )}
+
+                {hasMore && (
+                    <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+                        <button
+                            className="btn-secondary"
+                            onClick={() => fetchNotifications(true)}
+                            disabled={loadingMore}
+                        >
+                            {loadingMore ? 'Loading...' : 'Load Older Notifications'}
+                        </button>
                     </div>
                 )}
             </div>

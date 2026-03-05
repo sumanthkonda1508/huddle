@@ -38,7 +38,7 @@ export default function CreateVenuePage() {
             // Allow editing existing venues regardless of current status (optional, but usually safe)
             if (isEditing) return;
 
-            if (userProfile.isVenueVerified) {
+            if (userProfile.isVerifiedVenue) {
                 // All good
             } else if (userProfile.venueVerificationStatus === 'pending') {
                 showDialog({

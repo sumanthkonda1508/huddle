@@ -14,6 +14,10 @@ export default function EventDetailsPage() {
     const [loading, setLoading] = useState(true);
     const [isUploadingCover, setIsUploadingCover] = useState(false);
     const [comments, setComments] = useState([]);
+    const [hasMoreComments, setHasMoreComments] = useState(false);
+    const [lastCommentDocId, setLastCommentDocId] = useState(null);
+    const [loadingMoreComments, setLoadingMoreComments] = useState(false);
+
     const [newComment, setNewComment] = useState('');
     const [isPosting, setIsPosting] = useState(false);
     const [bookingData, setBookingData] = useState({ count: 1, guests: [] });
@@ -55,23 +59,37 @@ export default function EventDetailsPage() {
     };
 
     const refreshEntry = () => {
-        api.getEvent(id).then(res => setEvent(res.data));
-        api.getComments(id).then(res => setComments(res.data));
+        api.getEvent(id).then(res => setEvent(prev => ({ ...prev, ...res.data })));
+        api.getComments(id).then(res => {
+            setComments(res.data.data);
+            setHasMoreComments(res.data.hasMore);
+            setLastCommentDocId(res.data.lastDocId);
+        });
     };
 
     useEffect(() => {
         setLoading(true);
-        Promise.all([
-            api.getEvent(id),
-            api.getComments(id)
-        ])
-            .then(([eventRes, commentsRes]) => {
-                setEvent(eventRes.data);
-                setComments(commentsRes.data);
-            })
-            .catch(err => console.error(err))
-            .finally(() => setLoading(false));
+        refreshEntry();
+        setLoading(false);
+
+        // Polling interval to emulate real-time
+        const intervalId = setInterval(refreshEntry, 5000);
+        return () => clearInterval(intervalId);
     }, [id]);
+
+    const fetchMoreComments = async () => {
+        setLoadingMoreComments(true);
+        try {
+            const res = await api.getComments(id, lastCommentDocId);
+            setComments(prev => [...prev, ...res.data.data]);
+            setHasMoreComments(res.data.hasMore);
+            setLastCommentDocId(res.data.lastDocId);
+        } catch (err) {
+            console.error("Failed to load more comments:", err);
+        } finally {
+            setLoadingMoreComments(false);
+        }
+    };
 
     const handlePostComment = async (e) => {
         e.preventDefault();
@@ -81,8 +99,7 @@ export default function EventDetailsPage() {
         try {
             await api.addComment(id, newComment);
             setNewComment('');
-            // Optimistic update or refresh? Refresh is safer for ID.
-            refreshEntry();
+            refreshEntry(); // Instantly update
         } catch (error) {
             console.error(error);
             showDialog({ title: 'Error', message: 'Failed to post comment', type: 'error' });
@@ -338,7 +355,7 @@ export default function EventDetailsPage() {
 
                     {/* Discussion */}
                     <div>
-                        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageCircle size={20} /> Discussion ({comments.length})</h3>
+                        <h3 className="section-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><MessageCircle size={20} /> Discussion ({comments.length}{hasMoreComments ? '+' : ''})</h3>
 
                         {/* Post Comment Form - Moved to top of comments */}
                         {currentUser && (
@@ -399,6 +416,17 @@ export default function EventDetailsPage() {
                                 </div>
                             ))}
                         </div>
+                        {hasMoreComments && (
+                            <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                                <button
+                                    className="btn-secondary"
+                                    onClick={fetchMoreComments}
+                                    disabled={loadingMoreComments}
+                                >
+                                    {loadingMoreComments ? 'Loading...' : 'View Older Comments'}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
 

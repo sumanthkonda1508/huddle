@@ -1,17 +1,22 @@
 from flask import request, jsonify, g
 from firebase_admin import firestore
 from google.cloud.firestore import FieldFilter
-from app.middleware import login_required
+from app.middleware import login_required, require_role, validate_request
+from app.schemas import UserSync, UserUpdate, VerificationRequest, SubscribeRequest, WishlistAdd
 from app.utils import format_doc
+from app import limiter
 from . import users_bp
 from datetime import datetime
 from app.blueprints.notifications.routes import create_notification
+from app.services.email_service import EmailService
 
 db = firestore.client()
 users_ref = db.collection('users')
 
 @users_bp.route('/sync', methods=['POST'])
 @login_required
+@validate_request(UserSync)
+@limiter.limit("5 per minute")
 def sync_user():
     """
     Syncs the authenticated user to Firestore.
@@ -21,7 +26,7 @@ def sync_user():
     user_doc_ref = users_ref.document(uid)
     user_doc = user_doc_ref.get()
 
-    data = request.get_json() or {}
+    data = g.validated_data
     
     # Basic fields from auth token or request
     email = g.user.get('email')
@@ -38,9 +43,9 @@ def sync_user():
     if not user_doc.exists:
         # New User
         user_data['createdAt'] = firestore.SERVER_TIMESTAMP
-        user_data['role'] = 'attendee' # Default role
-        user_data['isVerified'] = False # Host verification
-        user_data['isVenueVerified'] = False # Venue verification
+        user_data['role'] = 'user'  # RBAC role: "user" | "admin"
+        user_data['isVerifiedHost'] = False  # Host verification (separate from role)
+        user_data['isVerifiedVenue'] = False  # Venue verification (separate from role)
         user_data['city'] = data.get('city', '')
         user_data['hobbies'] = data.get('hobbies', [])
         user_doc_ref.set(user_data)
@@ -109,29 +114,26 @@ def get_joined_events():
 
 @users_bp.route('/<uid>', methods=['PUT'])
 @login_required
+@validate_request(UserUpdate, exclude_unset=True)
 def update_user(uid):
     if g.user['uid'] != uid:
         return jsonify({'error': 'Permission denied'}), 403
     
-    data = request.get_json()
-    # Allowed fields: displayName, city, hobbies, bio, avatarUrl
-    allowed_fields = ['displayName', 'city', 'hobbies', 'bio', 'avatarUrl']
-    
-    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    update_data = g.validated_data
     update_data['updatedAt'] = firestore.SERVER_TIMESTAMP
     
-    # Use set with merge=True to ensure document exists if it was somehow missed
     users_ref.document(uid).set(update_data, merge=True)
     
     return jsonify({'message': 'Profile updated', 'updates': format_doc(update_data)}), 200
 
 @users_bp.route('/me/subscribe', methods=['POST'])
 @login_required
+@validate_request(SubscribeRequest)
 def subscribe_user():
     uid = g.user['uid']
-    data = request.get_json()
-    plan_type = data.get('type', 'host') # 'host' or 'venue'
-    plan_name = data.get('plan', 'basic') 
+    data = g.validated_data
+    plan_type = data.get('type', 'host')
+    plan_name = data.get('plan', 'basic')
     
     update_data = {
         'updatedAt': firestore.SERVER_TIMESTAMP
@@ -148,15 +150,14 @@ def subscribe_user():
 
 @users_bp.route('/me/verify_request', methods=['POST'])
 @login_required
+@validate_request(VerificationRequest)
+@limiter.limit("2 per hour")
 def request_verification():
     uid = g.user['uid']
-    data = request.get_json()
-    doc_url = data.get('documentUrl')
-    ver_type = data.get('type', 'host') # 'host' or 'venue'
+    data = g.validated_data
+    doc_url = data['documentUrl']
+    ver_type = data.get('type', 'host')
     
-    if not doc_url:
-        return jsonify({'error': 'Document URL required'}), 400
-        
     update_data = {
         'updatedAt': firestore.SERVER_TIMESTAMP
     }
@@ -174,12 +175,8 @@ def request_verification():
 
 @users_bp.route('/<uid>/approve', methods=['POST'])
 @login_required
+@require_role('admin')
 def approve_host(uid):
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     data = request.get_json() or {}
     ver_type = data.get('type', 'host')
@@ -189,27 +186,34 @@ def approve_host(uid):
     }
 
     if ver_type == 'venue':
-        update_data['isVenueVerified'] = True
+        update_data['isVerifiedVenue'] = True
         update_data['venueVerificationStatus'] = 'approved'
         notification_msg = 'Your request to verify as a venue owner has been approved.'
     else:
-        update_data['isVerified'] = True
+        update_data['isVerifiedHost'] = True
         update_data['verificationStatus'] = 'approved'
         notification_msg = 'Your account has been verified as a host.'
 
     users_ref.document(uid).set(update_data, merge=True)
     
     create_notification(uid, 'Verification Approved', notification_msg, 'system')
+    
+    user_doc = users_ref.document(uid).get()
+    if user_doc.exists:
+        u_data = user_doc.to_dict()
+        EmailService.send_email(
+            to_email=u_data.get('email'),
+            subject="Your Huddle account has been verified!",
+            template_name="verification_approved",
+            context={"user_name": u_data.get('displayName') or 'User', "verification_type": "Venue Owner" if ver_type == 'venue' else "Event Host"}
+        )
+        
     return jsonify({'message': f'User {ver_type} verification approved'}), 200
 
 @users_bp.route('/<uid>/reject', methods=['POST'])
 @login_required
+@require_role('admin')
 def reject_host(uid):
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     data = request.get_json() or {}
     ver_type = data.get('type', 'host')
@@ -219,27 +223,34 @@ def reject_host(uid):
     }
 
     if ver_type == 'venue':
-        update_data['isVenueVerified'] = False
+        update_data['isVerifiedVenue'] = False
         update_data['venueVerificationStatus'] = 'rejected'
         notification_msg = 'Your request to verify as a venue owner has been rejected. Please update your documents and try again.'
     else:
-        update_data['isVerified'] = False
+        update_data['isVerifiedHost'] = False
         update_data['verificationStatus'] = 'rejected'
         notification_msg = 'Your request to become a host has been rejected. Please update your documents and try again.'
 
     users_ref.document(uid).set(update_data, merge=True)
     
     create_notification(uid, 'Verification Rejected', notification_msg, 'system')
+    
+    user_doc = users_ref.document(uid).get()
+    if user_doc.exists:
+        u_data = user_doc.to_dict()
+        EmailService.send_email(
+            to_email=u_data.get('email'),
+            subject="Huddle Verification Update",
+            template_name="verification_rejected",
+            context={"user_name": u_data.get('displayName') or 'User', "verification_type": "Venue Owner" if ver_type == 'venue' else "Event Host"}
+        )
+        
     return jsonify({'message': f'User {ver_type} verification rejected'}), 200
 
 @users_bp.route('/pending', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_pending_users():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'pending')).stream()
     users = []
@@ -251,12 +262,8 @@ def get_pending_users():
 
 @users_bp.route('/pending_venues', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_pending_venues():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'pending')).stream()
     users = []
@@ -268,12 +275,8 @@ def get_pending_venues():
 
 @users_bp.route('/approved', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_approved_users():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'approved')).stream()
     users = []
@@ -288,12 +291,8 @@ def get_approved_users():
 
 @users_bp.route('/approved_venues', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_approved_venues():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'approved')).stream()
     users = []
@@ -305,12 +304,8 @@ def get_approved_venues():
 
 @users_bp.route('/rejected', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_rejected_users():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('verificationStatus', '==', 'rejected')).stream()
     users = []
@@ -322,12 +317,8 @@ def get_rejected_users():
 
 @users_bp.route('/rejected_venues', methods=['GET'])
 @login_required
+@require_role('admin')
 def get_rejected_venues():
-    # Check Admin Role
-    requester_uid = g.user['uid']
-    requester_doc = users_ref.document(requester_uid).get()
-    if not requester_doc.exists or requester_doc.to_dict().get('role') != 'admin':
-        return jsonify({'error': 'Unauthorized: Admin access required'}), 403
 
     docs = users_ref.where(filter=FieldFilter('venueVerificationStatus', '==', 'rejected')).stream()
     users = []
@@ -351,13 +342,10 @@ def get_wishlist():
 
 @users_bp.route('/me/wishlist', methods=['POST'])
 @login_required
+@validate_request(WishlistAdd)
 def add_wishlist_item():
     uid = g.user['uid']
-    data = request.get_json()
-    
-    # Expected: type ('host' or 'place'), targetId, name, etc.
-    if not data.get('targetId') or not data.get('type'):
-        return jsonify({'error': 'Missing targetId or type'}), 400
+    data = g.validated_data
         
     wi = {
         'type': data.get('type'), # 'host' or 'place'

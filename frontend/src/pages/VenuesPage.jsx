@@ -7,6 +7,9 @@ import { CITIES } from '../base/venue_constants';
 export default function VenuesPage() {
     const [venues, setVenues] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hasMore, setHasMore] = useState(false);
+    const [lastDocId, setLastDocId] = useState(null);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     // Live Search State
     const [searchTerm, setSearchTerm] = useState('');
@@ -16,37 +19,54 @@ export default function VenuesPage() {
     const [draftCapacity, setDraftCapacity] = useState('');
     const [draftMinPrice, setDraftMinPrice] = useState('');
     const [draftMaxPrice, setDraftMaxPrice] = useState('');
+    const [draftSortBy, setDraftSortBy] = useState('created_at');
 
     // Active Filter States (applied to grid)
     const [activeFilters, setActiveFilters] = useState({
         city: '',
-        capacity: '',
-        minPrice: '',
-        maxPrice: ''
+        min_capacity: '',
+        min_price: '',
+        max_price: '',
+        q: '',
+        sort_by: 'created_at'
     });
 
     useEffect(() => {
-        fetchVenues();
+        fetchVenues(false, activeFilters);
     }, []);
 
-    const fetchVenues = async () => {
+    const fetchVenues = async (isLoadMore = false, filtersToUse = activeFilters) => {
+        if (!isLoadMore) setLoading(true);
+        else setLoadingMore(true);
         try {
-            const res = await api.getVenues();
-            setVenues(res.data);
+            const currentLastId = isLoadMore ? lastDocId : null;
+            const res = await api.getVenues(filtersToUse, currentLastId);
+            if (isLoadMore) {
+                setVenues(prev => [...prev, ...res.data.data]);
+            } else {
+                setVenues(res.data.data);
+            }
+            setHasMore(res.data.hasMore);
+            setLastDocId(res.data.lastDocId);
         } catch (error) {
             console.error("Failed to fetch venues:", error);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
         }
     };
 
     const applyFilters = () => {
-        setActiveFilters({
+        const newFilters = {
             city: draftCity,
-            capacity: draftCapacity,
-            minPrice: draftMinPrice,
-            maxPrice: draftMaxPrice
-        });
+            min_capacity: draftCapacity,
+            min_price: draftMinPrice,
+            max_price: draftMaxPrice,
+            q: searchTerm,
+            sort_by: draftSortBy
+        };
+        setActiveFilters(newFilters);
+        fetchVenues(false, newFilters);
     };
 
     const clearFilters = () => {
@@ -55,27 +75,19 @@ export default function VenuesPage() {
         setDraftCapacity('');
         setDraftMinPrice('');
         setDraftMaxPrice('');
-        setActiveFilters({
+        setDraftSortBy('created_at');
+
+        const clearedFilters = {
             city: '',
-            capacity: '',
-            minPrice: '',
-            maxPrice: ''
-        });
+            min_capacity: '',
+            min_price: '',
+            max_price: '',
+            q: '',
+            sort_by: 'created_at'
+        };
+        setActiveFilters(clearedFilters);
+        fetchVenues(false, clearedFilters);
     };
-
-    const filteredVenues = venues.filter(v => {
-        // 1. Search is LIVE
-        const matchesSearch = v.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            v.location.toLowerCase().includes(searchTerm.toLowerCase());
-
-        // 2. Filters are MANUAL (based on activeFilters)
-        const matchesCity = activeFilters.city ? v.location.includes(activeFilters.city) : true;
-        const matchesCapacity = activeFilters.capacity ? v.capacity >= parseInt(activeFilters.capacity) : true;
-        const matchesMinPrice = activeFilters.minPrice ? v.price_per_hour >= parseInt(activeFilters.minPrice) : true;
-        const matchesMaxPrice = activeFilters.maxPrice ? v.price_per_hour <= parseInt(activeFilters.maxPrice) : true;
-
-        return matchesSearch && matchesCity && matchesCapacity && matchesMinPrice && matchesMaxPrice;
-    });
 
     if (loading) return <div className="container" style={{ textAlign: 'center', marginTop: '2rem' }}>Loading venues...</div>;
 
@@ -171,6 +183,20 @@ export default function VenuesPage() {
                         />
                     </div>
 
+                    {/* Sort Select */}
+                    <div style={{ flex: '1 1 130px', position: 'relative' }}>
+                        <select
+                            className="form-input"
+                            value={draftSortBy}
+                            onChange={(e) => setDraftSortBy(e.target.value)}
+                            style={{ paddingLeft: '1rem', border: '1px solid var(--border-color)', borderRadius: '25px', backgroundColor: '#F8FAFC', fontSize: '0.9rem' }}
+                        >
+                            <option value="created_at">Sort: Newest</option>
+                            <option value="price">Sort: Price</option>
+                            <option value="capacity">Sort: Capacity</option>
+                        </select>
+                    </div>
+
                     {/* Apply Button */}
                     <button
                         className="btn"
@@ -181,7 +207,7 @@ export default function VenuesPage() {
                     </button>
 
                     {/* Clear Button (only if active filters or search) */}
-                    {(searchTerm || activeFilters.city || activeFilters.capacity || activeFilters.minPrice || activeFilters.maxPrice) && (
+                    {(searchTerm || activeFilters.city || activeFilters.min_capacity || activeFilters.min_price || activeFilters.max_price || activeFilters.sort_by !== 'created_at') && (
                         <button
                             onClick={clearFilters}
                             style={{
@@ -201,18 +227,32 @@ export default function VenuesPage() {
                 </div>
             </div>
 
-            {filteredVenues.length === 0 ? (
+            {venues.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
                     <h3>No venues found</h3>
                     <p>Try adjusting your search terms or filters.</p>
                     <button className="btn" onClick={clearFilters} style={{ marginTop: '1rem' }}>Clear All</button>
                 </div>
             ) : (
-                <div className="event-grid">
-                    {filteredVenues.map(venue => (
-                        <VenueCard key={venue.id} venue={venue} />
-                    ))}
-                </div>
+                <>
+                    <div className="event-grid">
+                        {venues.map(venue => (
+                            <VenueCard key={venue.id} venue={venue} />
+                        ))}
+                    </div>
+                    {hasMore && (
+                        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+                            <button
+                                className="btn-secondary"
+                                onClick={() => fetchVenues(true)}
+                                disabled={loadingMore}
+                                style={{ padding: '0.75rem 2rem', borderRadius: '50px' }}
+                            >
+                                {loadingMore ? 'Loading...' : 'Load More Venues'}
+                            </button>
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

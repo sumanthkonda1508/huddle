@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider } from 'react-router-dom';
+import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -16,7 +17,9 @@ import VenuesPage from './pages/VenuesPage';
 import CreateVenuePage from './pages/CreateVenuePage';
 import VenueDetailsPage from './pages/VenueDetailsPage';
 import EventsPage from './pages/EventsPage';
+import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import MyTicketsPage from './pages/MyTicketsPage';
 
 // Define the router
 const router = createBrowserRouter(
@@ -41,6 +44,7 @@ const router = createBrowserRouter(
       <Route path="venue-verification" element={<VenueVerificationPage />} />
       <Route path="admin" element={<AdminPage />} />
       <Route path="venues" element={<VenuesPage />} />
+      <Route path="tickets" element={<MyTicketsPage />} />
 
       {/* Venue Owner Protected Routes */}
       <Route element={<ProtectedRoute verifiedType="venue" />}>
@@ -49,12 +53,17 @@ const router = createBrowserRouter(
       </Route>
 
       <Route path="venues/:id" element={<VenueDetailsPage />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Route>
   )
 );
 
 function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary>
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }
 
 export default App;

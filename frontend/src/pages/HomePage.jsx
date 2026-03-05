@@ -32,7 +32,7 @@ export default function HomePage() {
     const [location, setLocation] = useState('');
     const [category, setCategory] = useState('');
 
-    const canViewVenues = userProfile?.isVerified || userProfile?.isVenueVerified; // Check permissions
+    const canViewVenues = userProfile?.isVerifiedHost || userProfile?.isVerifiedVenue; // Check permissions
 
     useEffect(() => {
         // Force 'events' mode if user cannot view venues
@@ -47,11 +47,11 @@ export default function HomePage() {
             try {
                 // Fetch Events
                 const eventsRes = await api.getEvents();
-                setEvents(eventsRes.data.slice(0, 6));
+                setEvents(eventsRes.data.data.slice(0, 6));
 
-                // Fetch Venues (only if needed or public? API is public but UI is restricted)
+                // Fetch Venues
                 const venuesRes = await api.getVenues();
-                setFeaturedVenues(venuesRes.data.slice(0, 3));
+                setFeaturedVenues(venuesRes.data.data.slice(0, 3));
             } catch (err) {
                 console.error("Failed to fetch home data", err);
             } finally {
@@ -366,12 +366,12 @@ export default function HomePage() {
                         <h2>Ready to host your own event?</h2>
                         <p>Join our community of organizers and venue owners.</p>
                         <div className="cta-buttons">
-                            {userProfile?.isVerified ? (
+                            {userProfile?.isVerifiedHost ? (
                                 <Link to="/events/new" className="btn btn-lg-white">Host Event</Link>
                             ) : (
                                 <Link to="/verification" className="btn btn-lg-white">Become a Host</Link>
                             )}
-                            {userProfile?.isVenueVerified ? (
+                            {userProfile?.isVerifiedVenue ? (
                                 <Link to="/venues/new" className="btn btn-outline-white">List Venue</Link>
                             ) : (
                                 <Link to="/venue-verification" className="btn btn-outline-white">List Venue</Link>

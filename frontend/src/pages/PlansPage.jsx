@@ -19,7 +19,7 @@ export default function PlansPage() {
         }
 
         // Check if user is verified
-        if (!userProfile?.isVerified) {
+        if (!userProfile?.isVerifiedHost) {
             showDialog({
                 title: 'Verification Required',
                 message: 'You need to be a verified member to subscribe to a plan. Would you like to proceed to verification?',

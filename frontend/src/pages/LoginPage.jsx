@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, signOut, GoogleAuthProvider, signInWithPopup } from 'firebase/auth'; // Added Google imports
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, sendEmailVerification, signOut, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
@@ -45,6 +45,38 @@ export default function LoginPage() {
                 message: "Failed to sign in with Google: " + error.message,
                 type: 'error'
             });
+        }
+    };
+
+    const handleForgotPassword = async () => {
+        if (!email) {
+            showDialog({
+                title: 'Email Required',
+                message: 'Please enter your email address above to reset your password.',
+                type: 'alert'
+            });
+            return;
+        }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            showDialog({
+                title: 'Password Reset',
+                message: 'If an account exists for this email, a password reset link has been sent.',
+                type: 'success'
+            });
+        } catch (error) {
+            console.error("Password reset error", error);
+            if (error.code === 'auth/invalid-email') {
+                showDialog({ title: 'Invalid Email', message: 'Please enter a valid email address.', type: 'error' });
+            } else if (error.code === 'auth/too-many-requests') {
+                showDialog({ title: 'Too Many Requests', message: 'Please wait a moment before trying again.', type: 'error' });
+            } else {
+                showDialog({
+                    title: 'Password Reset',
+                    message: 'If an account exists for this email, a password reset link has been sent.',
+                    type: 'success'
+                });
+            }
         }
     };
 
@@ -153,7 +185,18 @@ export default function LoginPage() {
                         />
                     </div>
                     <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-secondary)' }}>Password</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                            <label style={{ fontWeight: '500', color: 'var(--text-secondary)' }}>Password</label>
+                            {!isSignup && (
+                                <button
+                                    type="button"
+                                    onClick={handleForgotPassword}
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.85rem', cursor: 'pointer', padding: 0 }}
+                                >
+                                    Forgot Password?
+                                </button>
+                            )}
+                        </div>
                         <input
                             type="password"
                             value={password}

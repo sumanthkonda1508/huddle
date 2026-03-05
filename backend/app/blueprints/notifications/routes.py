@@ -35,14 +35,18 @@ def create_notification(recipient_id, title, message, type, related_event_id=Non
 @login_required
 def get_notifications():
     uid = g.user['uid']
+    limit = min(int(request.args.get('limit', 20)), 50)
+    last_doc_id = request.args.get('last_doc_id')
     
-    # Query without order_by to avoid requiring a composite index immediately.
-    # We will sort in memory since we are limiting to 50 anyway.
     query = db.collection('notifications')\
-            .where(filter=FieldFilter('recipientId', '==', uid))\
-            .limit(50)
-            
-    docs = query.stream()
+            .where(filter=FieldFilter('recipientId', '==', uid))
+    
+    if last_doc_id:
+        last_doc = db.collection('notifications').document(last_doc_id).get()
+        if last_doc.exists:
+            query = query.start_after(last_doc)
+    
+    docs = query.limit(limit + 1).stream()
     
     notifications = []
     for doc in docs:
@@ -51,10 +55,15 @@ def get_notifications():
         notifications.append(format_doc(d))
     
     # Sort in memory (newest first)
-    # Handle cases where createdAt might be None or missing safely
     notifications.sort(key=lambda x: str(x.get('createdAt') or ''), reverse=True)
     
-    return jsonify(notifications), 200
+    has_more = len(notifications) > limit
+    if has_more:
+        notifications = notifications[:limit]
+    
+    last_id = notifications[-1]['id'] if notifications else None
+    
+    return jsonify({'data': notifications, 'hasMore': has_more, 'lastDocId': last_id}), 200
 
 @notifications_bp.route('/<notification_id>/read', methods=['PUT'])
 @login_required

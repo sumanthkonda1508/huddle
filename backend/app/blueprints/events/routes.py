@@ -1,8 +1,10 @@
 from flask import request, jsonify, g
 from firebase_admin import firestore
 from google.cloud.firestore import FieldFilter
-from app.middleware import login_required
+from app.middleware import login_required, validate_request
+from app.schemas import EventCreate, EventUpdate, CommentCreate
 from app.utils import format_doc
+from app import limiter
 from . import events_bp
 from datetime import datetime
 
@@ -11,49 +13,36 @@ events_ref = db.collection('events')
 
 @events_bp.route('', methods=['POST'])
 @login_required
+@validate_request(EventCreate)
 def create_event():
-    # Only hosts can create? MVP says "Host can create an event".
-    # User roles are in their profile. We should check it.
     uid = g.user['uid']
     user_doc = db.collection('users').document(uid).get()
     
-    # Optional: Role check (enforce later or now? Let's be lenient for MVP or just check logic)
-    # if user_doc.exists and user_doc.to_dict().get('role') != 'host':
-    #     return jsonify({'error': 'Only hosts can create events'}), 403
-    
-    data = request.get_json()
-    required = ['title', 'city', 'hobby', 'date', 'maxParticipants', 'venue']
-    if not all(k in data for k in required):
-        return jsonify({'error': 'Missing required fields'}), 400
-
-    # Parse date (expect ISO string)
-    try:
-        # Simple ISO parse or let frontend send timestamp?
-        # Let's assume frontend sends ISO8601 string.
-        # Python 3.7+ fromisoformat handles some, but depends on format.
-        # For simplicity, we store what we get or validate basic presence.
-        pass 
-    except ValueError:
-        pass
+    data = g.validated_data
 
     event_data = {
         'hostId': uid,
         'title': data['title'],
         'description': data.get('description', ''),
         'city': data['city'],
-        'address': data.get('address', ''), # Full formatted address
-        'coordinates': data.get('coordinates', None), # {lat, lng}
+        'address': data.get('address', ''),
+        'coordinates': data.get('coordinates', None),
         'hobby': data['hobby'],
-        'venue': data['venue'], # Name of the place
-        'price': float(data.get('price', 0)),
-        'date': data['date'], # formatted string or timestamp
-        'maxParticipants': int(data['maxParticipants']),
+        'venue': data['venue'],
+        'price': data.get('price', 0),
+        'date': data['date'],
+        'maxParticipants': data['maxParticipants'],
         'participants': [],
-        'attendeeCount': 0, # Total headcount including guests
-        'eventType': data.get('eventType', 'solo'), # 'solo' or 'group'
-        'maxTicketsPerUser': int(data.get('maxTicketsPerUser', 4 if data.get('eventType', 'solo') == 'solo' else 10)),
+        'attendeeCount': 0,
+        'eventType': data.get('eventType', 'solo'),
+        'maxTicketsPerUser': data.get('maxTicketsPerUser') or (4 if data.get('eventType', 'solo') == 'solo' else 10),
         'allowCancellation': data.get('allowCancellation', True),
-        'mediaUrls': data.get('mediaUrls', []), # List of URLs
+        'mediaUrls': data.get('mediaUrls', []),
+        'is_paid': data.get('is_paid', False),
+        'ticket_price': data.get('ticket_price', 0.0),
+        'currency': data.get('currency', 'INR'),
+        'max_tickets': data.get('max_tickets', data['maxParticipants']),
+        'tickets_sold': 0,
         'createdAt': firestore.SERVER_TIMESTAMP
     }
     
@@ -122,35 +111,83 @@ def list_events():
     city = request.args.get('city')
     hobby = request.args.get('hobby')
     q = request.args.get('q')
+    date_filter = request.args.get('date_filter')
+    is_paid = request.args.get('is_paid')
+    max_price = request.args.get('max_price')
+    sort_by = request.args.get('sort_by', 'date')
+    sort_dir = request.args.get('sort_dir', 'asc')
+    
+    limit = min(int(request.args.get('limit', 20)), 50)
+    last_doc_id = request.args.get('last_doc_id')
     
     query = events_ref
-    # Removed strict Firestore filters to allow partial matching in Python
-        
-    # Order by date?
-    # query = query.order_by('date')
     
+    # 1. Equality Filters
+    if city:
+        query = query.where(filter=FieldFilter('city', '==', city))
+    if hobby:
+        query = query.where(filter=FieldFilter('hobby', '==', hobby))
+        
+    if is_paid is not None and is_paid != '':
+        is_paid_bool = str(is_paid).lower() == 'true'
+        query = query.where(filter=FieldFilter('is_paid', '==', is_paid_bool))
+
+    # 2. Sorting
+    direction = firestore.Query.ASCENDING if sort_dir == 'asc' else firestore.Query.DESCENDING
+    if sort_by == 'price':
+        query = query.order_by('ticket_price', direction=direction)
+    elif sort_by == 'popularity':
+        query = query.order_by('attendeeCount', direction=direction)
+    else:
+        # Default date
+        query = query.order_by('date', direction=direction)
+        
+    # Order by document ID for stable cursor pagination
+    from google.cloud.firestore_v1.field_path import FieldPath
+    query = query.order_by(FieldPath.document_id(), direction=direction)
+
+    if last_doc_id:
+        last_doc = events_ref.document(last_doc_id).get()
+        if last_doc.exists:
+            query = query.start_after(last_doc)
+            
+    # Use generator to find matches
     docs = query.stream()
+    
+    from datetime import datetime
+    now_iso = datetime.utcnow().isoformat()
+    today_date = datetime.utcnow().date().isoformat()
+    
     events = []
+    
     for doc in docs:
+        if len(events) >= limit + 1:
+            break
+            
         d = doc.to_dict()
         d['id'] = doc.id
         
-        # Filter Logic (Case-insensitive partial match)
-        
-        # 1. City
-        doc_city = str(d.get('city') or '').lower()
-        if city and city.lower() not in doc_city:
-            continue
+        # Date Filter
+        doc_date = d.get('date', '')
+        if date_filter == 'upcoming':
+            if doc_date < now_iso: continue
+        elif date_filter == 'past':
+            if doc_date >= now_iso: continue
+        elif date_filter == 'today':
+            if not doc_date.startswith(today_date): continue
+        elif date_filter and len(date_filter) == 10:
+            if not doc_date.startswith(date_filter): continue
             
-        # 2. Hobby/Category
-        doc_hobby = str(d.get('hobby') or '').lower()
-        if hobby and hobby.lower() not in doc_hobby:
-            continue
-        
-        # 3. General Search (q)
+        # Price Filter
+        if max_price:
+            try:
+                if float(d.get('ticket_price', 0)) > float(max_price):
+                    continue
+            except: pass
+            
+        # General Search (q)
         if q:
             term = q.lower()
-            # Safely concatenate fields, handling None
             title = str(d.get('title') or '')
             desc = str(d.get('description') or '')
             hobb = str(d.get('hobby') or '')
@@ -160,8 +197,14 @@ def list_events():
                 continue
         
         events.append(format_doc(d))
+    
+    has_more = len(events) > limit
+    if has_more:
+        events = events[:limit]
+    
+    last_id = events[-1]['id'] if events else None
         
-    return jsonify(events), 200
+    return jsonify({'data': events, 'hasMore': has_more, 'lastDocId': last_id}), 200
 
 @events_bp.route('/<event_id>', methods=['GET'])
 def get_event(event_id):
@@ -233,6 +276,7 @@ def join_transaction(transaction, event_ref, uid, guests):
 
 @events_bp.route('/<event_id>/join', methods=['POST'])
 @login_required
+@limiter.limit("10 per minute")
 def join_event(event_id):
     uid = g.user['uid']
     user_name = g.user.get('name', 'Someone')
@@ -247,6 +291,24 @@ def join_event(event_id):
     transaction = db.transaction()
     try:
         result = join_transaction(transaction, event_ref, uid, guests)
+        
+        # Generate Free Ticket Document if payment is missing
+        if result.get('code') == 200:
+            payment_id = data.get('payment_id')
+            if not payment_id:
+                import time
+                import uuid
+                ticket_id = f"tkt_free_{uuid.uuid4().hex}"
+                db.collection('tickets').document(ticket_id).set({
+                    'id': ticket_id,
+                    'event_id': event_id,
+                    'user_id': uid,
+                    'payment_id': 'free',
+                    'order_id': 'none',
+                    'status': 'active',
+                    'created_at': int(time.time()),
+                    'is_mock': True
+                })
         
         # Notify Host if successful
         if result.get('code') == 200:
@@ -319,6 +381,7 @@ def leave_event(event_id):
 
 @events_bp.route('/<event_id>', methods=['PUT'])
 @login_required
+@validate_request(EventUpdate, exclude_unset=True)
 def update_event(event_id):
     uid = g.user['uid']
     event_ref = events_ref.document(event_id)
@@ -331,27 +394,17 @@ def update_event(event_id):
     if data.get('hostId') != uid:
         return jsonify({'error': 'Unauthorized. Only the host can edit this event.'}), 403
         
-    update_data = request.get_json()
-    
-    # Fields allowed to be updated
-    allowed_fields = [
-        'title', 'description', 'city', 'address', 'coordinates', 
-        'hobby', 'venue', 'price', 'date', 'maxParticipants', 
-        'eventType', 'maxTicketsPerUser', 'allowCancellation', 'mediaUrls'
-    ]
-    
-    # Filter only allowed fields
-    sanitized_data = {k: v for k, v in update_data.items() if k in allowed_fields}
-    sanitized_data['updatedAt'] = firestore.SERVER_TIMESTAMP
+    update_data = g.validated_data
+    update_data['updatedAt'] = firestore.SERVER_TIMESTAMP
     
     # Optional: Logic to handle maxParticipants reduction vs current attendees
     current_attendees = data.get('attendeeCount', 0)
-    if 'maxParticipants' in sanitized_data:
-        new_max = int(sanitized_data['maxParticipants'])
+    if 'maxParticipants' in update_data:
+        new_max = int(update_data['maxParticipants'])
         if new_max < current_attendees:
             return jsonify({'error': f'Cannot reduce max participants below current attendee count ({current_attendees})'}), 400
             
-    event_ref.update(sanitized_data)
+    event_ref.update(update_data)
     
     return jsonify({'message': 'Event updated successfully'}), 200
 
@@ -368,36 +421,121 @@ def delete_event(event_id):
     data = doc.to_dict()
     if data.get('hostId') != uid:
         return jsonify({'error': 'Unauthorized. Only the host can delete this event.'}), 403
-        
-    # Optional: Delete subcollections (comments, bookings) manually if needed.
-    # For now, just deleting the main doc.
+
+    # Auto-refund active tickets for paid events
+    if data.get('is_paid'):
+        try:
+            active_tickets = db.collection('tickets')\
+                .where('event_id', '==', event_id)\
+                .where('status', '==', 'active')\
+                .stream()
+            
+            import time as _time
+            from app.services.email_service import EmailService
+
+            for ticket_doc in active_tickets:
+                td = ticket_doc.to_dict()
+                ticket_holder = td.get('user_id')
+
+                # Mark ticket as refunded
+                ticket_doc.reference.update({
+                    'status': 'refunded',
+                    'refunded_at': int(_time.time()),
+                    'refund_reason': 'event_cancelled'
+                })
+
+                # Mark payment order as refunded if exists
+                order_id = td.get('order_id')
+                if order_id and order_id not in ('none', ''):
+                    order_ref = db.collection('payment_orders').document(order_id)
+                    order_doc_snap = order_ref.get()
+                    if order_doc_snap.exists and order_doc_snap.to_dict().get('status') == 'paid':
+                        order_ref.update({
+                            'status': 'refunded',
+                            'refunded_at': int(_time.time()),
+                            'refund_reason': 'event_cancelled'
+                        })
+
+                # Notify ticket holder
+                if ticket_holder:
+                    create_notification(
+                        recipient_id=ticket_holder,
+                        title='Event Cancelled — Refund Issued',
+                        message=f'"{data.get("title")}" has been cancelled. Your ticket has been refunded.',
+                        type='refund',
+                        related_event_id=event_id
+                    )
+
+                    # Send refund email
+                    holder_doc = db.collection('users').document(ticket_holder).get()
+                    if holder_doc.exists:
+                        order_data = {}
+                        if order_id and order_id not in ('none', ''):
+                            od = db.collection('payment_orders').document(order_id).get()
+                            if od.exists:
+                                order_data = od.to_dict()
+
+                        EmailService.send_email(
+                            to_email=holder_doc.to_dict().get('email'),
+                            subject="Event Cancelled — Refund Processed",
+                            template_name="refund_processed",
+                            context={
+                                "user_name": holder_doc.to_dict().get('displayName') or 'User',
+                                "event_name": data.get('title', 'Event'),
+                                "amount": f"{order_data.get('currency', 'INR')} {order_data.get('amount', 0)}",
+                                "payment_id": td.get('payment_id', 'N/A')
+                            }
+                        )
+        except Exception as e:
+            print(f"Auto-refund error during event cancellation: {e}")
+            # Continue with deletion even if refund notifications fail
+
     event_ref.delete()
     
     return jsonify({'message': 'Event deleted successfully'}), 200
 
 @events_bp.route('/<event_id>/comments', methods=['GET'])
 def list_comments(event_id):
-    # ... existing implementation ...
-    comments_ref = events_ref.document(event_id).collection('comments')
+    limit = min(int(request.args.get('limit', 20)), 50)
+    last_doc_id = request.args.get('last_doc_id')
+    
+    event_ref = events_ref.document(event_id)
+    if not event_ref.get().exists:
+        return jsonify({'error': 'Event not found'}), 404
+        
+    comments_ref = event_ref.collection('comments')
     # Sort Oldest First (ASCENDING) so conversation reads naturally
-    docs = comments_ref.order_by('createdAt', direction=firestore.Query.ASCENDING).stream()
+    query = comments_ref.order_by('createdAt', direction=firestore.Query.ASCENDING)
+    
+    if last_doc_id:
+        last_doc = comments_ref.document(last_doc_id).get()
+        if last_doc.exists:
+            query = query.start_after(last_doc)
+            
+    docs = query.limit(limit + 1).stream()
     comments = []
     for doc in docs:
         d = doc.to_dict()
         d['id'] = doc.id
         comments.append(format_doc(d))
-    return jsonify(comments), 200
+        
+    has_more = len(comments) > limit
+    if has_more:
+        comments = comments[:limit]
+        
+    last_id = comments[-1]['id'] if comments else None
+        
+    return jsonify({'data': comments, 'hasMore': has_more, 'lastDocId': last_id}), 200
 
 @events_bp.route('/<event_id>/comments', methods=['POST'])
 @login_required
+@validate_request(CommentCreate)
+@limiter.limit("20 per minute")
 def add_comment(event_id):
     uid = g.user['uid']
     user_name = g.user.get('name', 'Someone')
-    data = request.get_json()
-    text = data.get('text')
-    
-    if not text:
-        return jsonify({'error': 'Comment text is required'}), 400
+    data = g.validated_data
+    text = data['text']
         
     user_doc = db.collection('users').document(uid).get()
     display_name = 'Unknown User'

@@ -9,7 +9,8 @@ export default function CreateEventPage() {
     const { showDialog } = useDialog();
     const [formData, setFormData] = useState({
         title: '', description: '', city: '', hobby: '', venue: '', address: '', coordinates: null, price: '',
-        date: '', maxParticipants: 10, eventType: 'solo', maxTicketsPerUser: 4
+        date: '', maxParticipants: 10, eventType: 'solo', maxTicketsPerUser: 4,
+        is_paid: false, ticket_price: '', currency: 'INR', max_tickets: ''
     });
     const { id } = useParams();
     const navigate = useNavigate();
@@ -77,7 +78,7 @@ export default function CreateEventPage() {
             // ... checkVerification ...
             try {
                 const res = await api.getProfile();
-                if (res.data.isVerified) {
+                if (res.data.isVerifiedHost) {
                     setVerifying(false);
                 } else if (res.data.verificationStatus === 'pending') {
                     showDialog({
@@ -118,7 +119,11 @@ export default function CreateEventPage() {
                     price: data.price || 0,
                     eventType: data.eventType || 'solo',
                     maxTicketsPerUser: data.maxTicketsPerUser || 4,
-                    mediaUrls: data.mediaUrls || []
+                    mediaUrls: data.mediaUrls || [],
+                    is_paid: data.is_paid || false,
+                    ticket_price: data.ticket_price || '',
+                    currency: data.currency || 'INR',
+                    max_tickets: data.max_tickets || data.maxParticipants || ''
                 });
                 if (venueInputRef.current) {
                     venueInputRef.current.value = data.venue || '';
@@ -177,7 +182,12 @@ export default function CreateEventPage() {
             // Data already contains base64 mediaUrls if set by handleImageChange
             // No separate upload step needed!
 
-            const payload = { ...formData, price: Number(formData.price) || 0 };
+            const payload = {
+                ...formData,
+                price: Number(formData.price) || 0,
+                ticket_price: formData.is_paid ? (Number(formData.ticket_price) || 0) : 0,
+                max_tickets: formData.is_paid ? (Number(formData.max_tickets) || Number(formData.maxParticipants)) : Number(formData.maxParticipants)
+            };
 
             if (isEditing) {
                 await api.updateEvent(id, payload);
@@ -449,20 +459,50 @@ export default function CreateEventPage() {
                                 className="input-field"
                             />
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Price (₹)</label>
-                            <input
-                                name="price"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={formData.price}
-                                onChange={handleChange}
-                                required
-                                className="input-field"
-                                placeholder="0"
-                            />
-                            <div className="helper-text">Set to 0 for free events</div>
+                        <div className="form-group" style={{ gridColumn: '1 / -1', marginTop: '1rem', padding: '1.5rem', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', background: 'var(--bg-color)' }}>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                                <input
+                                    type="checkbox"
+                                    name="is_paid"
+                                    checked={formData.is_paid}
+                                    onChange={(e) => setFormData({ ...formData, is_paid: e.target.checked })}
+                                    style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--primary)' }}
+                                />
+                                <span style={{ color: 'var(--text-primary)' }}>This is a Paid Event (Requires Ticket Purchase)</span>
+                            </label>
+
+                            {formData.is_paid && (
+                                <div className="form-grid two-col" style={{ marginTop: '1.5rem' }}>
+                                    <div className="form-group">
+                                        <label className="form-label">Ticket Price (₹)</label>
+                                        <input
+                                            name="ticket_price"
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={formData.ticket_price}
+                                            onChange={handleChange}
+                                            required={formData.is_paid}
+                                            className="input-field"
+                                            placeholder="e.g. 500"
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Total Tickets Available</label>
+                                        <input
+                                            name="max_tickets"
+                                            type="number"
+                                            min="1"
+                                            value={formData.max_tickets}
+                                            onChange={handleChange}
+                                            required={formData.is_paid}
+                                            className="input-field"
+                                            placeholder="Leave empty to use Max Participants"
+                                        />
+                                        <div className="helper-text">Cannot exceed {formData.maxParticipants || 10} currently.</div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

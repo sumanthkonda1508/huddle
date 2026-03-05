@@ -28,7 +28,7 @@ export default function VenueVerificationPage() {
                 const res = await api.getProfile();
 
                 // If already verified, redirect
-                if (res.data.isVenueVerified) {
+                if (res.data.isVerifiedVenue) {
                     showDialog({
                         title: 'Already Verified',
                         message: 'You are already a verified venue owner.',

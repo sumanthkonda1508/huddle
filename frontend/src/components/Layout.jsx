@@ -1,28 +1,36 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { api } from '../api/client';
 import { DialogProvider } from '../context/DialogContext';
-import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin, Calendar } from 'lucide-react';
+import { Bell, User, Menu, Home, Plus, BarChart, Shield, LogOut, X, MapPin, Calendar, Ticket } from 'lucide-react';
 import Footer from './Footer';
 
 export default function Layout() {
     const { currentUser, userProfile, isAdmin } = useAuth();
     const navigate = useNavigate();
-    const [hasUnread, setHasUnread] = React.useState(false);
-    const [isOpen, setIsOpen] = React.useState(false);
+    const [hasUnread, setHasUnread] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
 
-    React.useEffect(() => {
-        if (currentUser) {
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const fetchUnread = () => {
             api.getNotifications()
                 .then(res => {
                     const unread = res.data.some(n => !n.read);
                     setHasUnread(unread);
                 })
                 .catch(err => console.error("Failed to fetch notifications", err));
-        }
+        };
+
+        fetchUnread();
+        const intervalId = setInterval(fetchUnread, 10000); // 10 second polling
+
+        return () => clearInterval(intervalId);
     }, [currentUser]);
 
 
@@ -48,11 +56,12 @@ export default function Layout() {
                         {/* Desktop Nav */}
                         <nav className="nav-links desktop-only">
                             <Link to="/events">Events</Link>
-                            {(userProfile?.isVerified || userProfile?.isVenueVerified) && <Link to="/venues">Venues</Link>}
+                            {(userProfile?.isVerifiedHost || userProfile?.isVerifiedVenue) && <Link to="/venues">Venues</Link>}
                             {currentUser ? (
                                 <>
-                                    {userProfile?.isVerified && <Link to="/events/new">Host Event</Link>}
-                                    {userProfile?.isVenueVerified && <Link to="/venues/new">List Venue</Link>}
+                                    {userProfile?.isVerifiedHost && <Link to="/events/new">Host Event</Link>}
+                                    {userProfile?.isVerifiedVenue && <Link to="/venues/new">List Venue</Link>}
+                                    <Link to="/tickets">My Tickets</Link>
                                     <Link to="/dashboard">Dashboard</Link>
                                     {isAdmin && <Link to="/admin" style={{ color: 'red' }}>Admin</Link>}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -96,12 +105,13 @@ export default function Layout() {
 
                                 <Link to="/" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Home size={20} /> Home</Link>
                                 <Link to="/events" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Calendar size={20} /> Events</Link>
-                                {(userProfile?.isVerified || userProfile?.isVenueVerified) && <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>}
+                                {(userProfile?.isVerifiedHost || userProfile?.isVerifiedVenue) && <Link to="/venues" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><MapPin size={20} /> Venues</Link>}
 
                                 {currentUser ? (
                                     <>
-                                        {userProfile?.isVerified && <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> Host Event</Link>}
-                                        {userProfile?.isVenueVerified && <Link to="/venues/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> List Venue</Link>}
+                                        {userProfile?.isVerifiedHost && <Link to="/events/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> Host Event</Link>}
+                                        {userProfile?.isVerifiedVenue && <Link to="/venues/new" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Plus size={20} /> List Venue</Link>}
+                                        <Link to="/tickets" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Ticket size={20} /> My Tickets</Link>
                                         <Link to="/dashboard" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><BarChart size={20} /> Dashboard</Link>
                                         <Link to="/profile" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><User size={20} /> Profile</Link>
                                         <Link to="/notifications" onClick={() => setIsOpen(false)} style={{ fontSize: '1.1rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Bell size={20} /> Notifications {hasUnread && '🔴'}</Link>

@@ -17,11 +17,11 @@ export default function ProtectedRoute({ verifiedType }) {
         return <Navigate to="/login" replace />;
     }
 
-    if (verifiedType === 'host' && !userProfile?.isVerified) {
+    if (verifiedType === 'host' && !userProfile?.isVerifiedHost) {
         return <Navigate to="/verification" replace />;
     }
 
-    if (verifiedType === 'venue' && !userProfile?.isVenueVerified) {
+    if (verifiedType === 'venue' && !userProfile?.isVerifiedVenue) {
         return <Navigate to="/venue-verification" replace />;
     }
 

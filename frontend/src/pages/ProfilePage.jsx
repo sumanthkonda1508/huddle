@@ -367,11 +367,11 @@ export default function ProfilePage() {
                                             <div>
                                                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>Want to host an event?</h3>
                                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                                    {profile.isVerified ? 'You are a verified host. Create amazing events now!' : 'Verify your identity to start hosting events.'}
+                                                    {profile.isVerifiedHost ? 'You are a verified host. Create amazing events now!' : 'Verify your identity to start hosting events.'}
                                                 </p>
                                             </div>
                                             <div style={{ marginTop: 'auto' }}>
-                                                {profile.isVerified ? (
+                                                {profile.isVerifiedHost ? (
                                                     <button
                                                         onClick={() => navigate('/events/new')}
                                                         className="btn"
@@ -399,11 +399,11 @@ export default function ProfilePage() {
                                             <div>
                                                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>Want to list your venue?</h3>
                                                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                                                    {profile.isVenueVerified ? 'You are a verified venue owner. List your space!' : 'Verify your property to start listing venues.'}
+                                                    {profile.isVerifiedVenue ? 'You are a verified venue owner. List your space!' : 'Verify your property to start listing venues.'}
                                                 </p>
                                             </div>
                                             <div style={{ marginTop: 'auto' }}>
-                                                {profile.isVenueVerified ? (
+                                                {profile.isVerifiedVenue ? (
                                                     <button
                                                         onClick={() => navigate('/venues/new')}
                                                         className="btn"

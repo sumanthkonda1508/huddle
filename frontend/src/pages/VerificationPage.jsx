@@ -28,7 +28,7 @@ export default function VerificationPage() {
                 const res = await api.getProfile();
 
                 // If already verified, redirect
-                if (res.data.isVerified) {
+                if (res.data.isVerifiedHost) {
                     showDialog({
                         title: 'Already Verified',
                         message: 'You are already a verified host.',
